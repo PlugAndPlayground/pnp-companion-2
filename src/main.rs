@@ -1,16 +1,17 @@
 use axum::{
     http::StatusCode, response::IntoResponse, response::Response, routing::post, Json, Router,
 };
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
 async fn main() {
-    startServer().await;
+    start_server().await;
 }
 
-async fn startServer() {
+async fn start_server() {
     // initialize tracing
     tracing_subscriber::fmt::init();
 
@@ -34,6 +35,15 @@ async fn startServer() {
 
 async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
     let received = payload;
+    let client = reqwest::Client::new();
+
+    /*let fun = match received.finalMethod.as_str() {
+        "Post" => client.post,
+        _ => client.get,
+    };*/
+
+    let final_result = client.get(received.finalURL);
+
     let response = CompanionResponse {
         status: 200,
         response: String::from("all good boss"),
@@ -41,25 +51,15 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
     //println!("Handling response to {:#?}", payload.);
     Json(response).into_response()
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 struct CompanionInput {
     finalURL: String,
     finalHeaders: String,
     finalBody: String,
+    finalMethod: String,
 }
 #[derive(Serialize)]
 struct CompanionResponse {
     status: i32,
     response: String,
-}
-
-// the input to our `create_user` handler
-struct CreateUser {
-    username: String,
-}
-
-// the output to our `create_user` handler
-struct User {
-    id: u64,
-    username: String,
 }

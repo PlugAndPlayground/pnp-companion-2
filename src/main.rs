@@ -33,6 +33,7 @@ async fn startServer() {
 }
 
 async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
+    let received = payload;
     let response = CompanionResponse {
         status: 200,
         response: String::from("all good boss"),

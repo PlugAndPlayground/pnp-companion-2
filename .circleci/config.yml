@@ -19,7 +19,10 @@ jobs:
     steps:
       - checkout
       - run: choco install rust
-      - run: cargo build
+      - run: cargo build --release
+#      - store_artifacts:
+#          path: binaries_windows.7z
+#          destination: binaries_macos_unix.7z
   buildMac:
     macos:
       xcode: 14.2.0

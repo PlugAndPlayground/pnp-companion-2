@@ -1,17 +1,12 @@
-use axum::{
-    routing::{get, post},
-    http::StatusCode,
-    response::IntoResponse,
-    Json, Router,
-};
+use axum::{http::StatusCode, response::IntoResponse, routing::post, Json, Router};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
+use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
-async fn main(){
+async fn main() {
     startServer().await;
 }
-
 
 async fn startServer() {
     // initialize tracing
@@ -20,13 +15,14 @@ async fn startServer() {
     // build our application with a route
     let app = Router::new()
         // `GET /` goes to `root`
-        .route("/", get(root));
-        // `POST /users` goes to `create_user`
-        //.route("/users", post(create_user));
+        .route("/", post(pnpRequest))
+        .layer(CorsLayer::permissive());
+    // `POST /users` goes to `create_user`
+    //.route("/users", post(create_user));
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 6655));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
@@ -36,6 +32,7 @@ async fn startServer() {
 
 // basic handler that responds with a static string
 async fn root() -> &'static str {
+    println!("gettin");
     "Hello, World!"
 }
 
@@ -54,6 +51,19 @@ async fn root() -> &'static str {
     // with a status code of `201 Created`
     (StatusCode::CREATED, Json(user))
 }*/
+
+async fn pnpRequest(Json(payload): Json<CompanionInput>) -> (StatusCode, Json<CompanionResponse>) {
+    let response = CompanionResponse { success: true };
+    (StatusCode::CREATED, Json(response))
+}
+#[derive(Deserialize)]
+struct CompanionInput {
+    waddup: bool,
+}
+#[derive(Serialize)]
+struct CompanionResponse {
+    success: bool,
+}
 
 // the input to our `create_user` handler
 struct CreateUser {

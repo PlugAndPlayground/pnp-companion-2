@@ -1,4 +1,6 @@
-use axum::{http::StatusCode, response::IntoResponse, routing::post, Json, Router};
+use axum::{
+    http::StatusCode, response::IntoResponse, response::Response, routing::post, Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
@@ -15,7 +17,7 @@ async fn startServer() {
     // build our application with a route
     let app = Router::new()
         // `GET /` goes to `root`
-        .route("/", post(pnpRequest))
+        .route("/", post(pnp_request))
         .layer(CorsLayer::permissive());
     // `POST /users` goes to `create_user`
     //.route("/users", post(create_user));
@@ -30,39 +32,24 @@ async fn startServer() {
         .unwrap();
 }
 
-// basic handler that responds with a static string
-async fn root() -> &'static str {
-    println!("gettin");
-    "Hello, World!"
-}
-
-/*async fn create_user(
-    // this argument tells axum to parse the request body
-    // as JSON into a `CreateUser` type
-    Json(payload): Json<CreateUser>,
-) -> (StatusCode, Json<User>) {
-    // insert your application logic here
-    let user = User {
-        id: 1337,
-        username: payload.username,
+async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
+    let response = CompanionResponse {
+        status: 200,
+        response: String::from("all good boss"),
     };
-
-    // this will be converted into a JSON response
-    // with a status code of `201 Created`
-    (StatusCode::CREATED, Json(user))
-}*/
-
-async fn pnpRequest(Json(payload): Json<CompanionInput>) -> (StatusCode, Json<CompanionResponse>) {
-    let response = CompanionResponse { success: true };
-    (StatusCode::CREATED, Json(response))
+    //println!("Handling response to {:#?}", payload.);
+    Json(response).into_response()
 }
 #[derive(Deserialize)]
 struct CompanionInput {
-    waddup: bool,
+    finalURL: String,
+    finalHeaders: String,
+    finalBody: String,
 }
 #[derive(Serialize)]
 struct CompanionResponse {
-    success: bool,
+    status: i32,
+    response: String,
 }
 
 // the input to our `create_user` handler

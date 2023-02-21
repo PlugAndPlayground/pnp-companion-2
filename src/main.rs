@@ -1,8 +1,7 @@
-use axum::{
-    http::StatusCode, response::IntoResponse, response::Response, routing::post, Json, Router,
-};
-use reqwest::Client;
+use axum::{response::IntoResponse, response::Response, routing::post, Json, Router};
+use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -42,11 +41,30 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
         _ => client.get,
     };*/
 
-    let final_result = client.get(received.finalURL);
+    let response = client.get(received.finalURL).send().await;
+
+    let mut status_code = StatusCode::IM_A_TEAPOT;
+    let return_string = match response {
+        Ok(res) => {
+            status_code = res.status();
+            let payload = res.text().await;
+            match payload {
+                Ok(text) => text,
+                Err(e) => String::from(e.to_string()),
+            }
+        }
+        Err(e) => String::from(e.to_string()),
+    };
+    //println!("returning: {}", return_string);
+    //let res = match sent {
+    //    _ => "bazinga",
+    //};
+
+    //print!("{}", final_result);
 
     let response = CompanionResponse {
-        status: 200,
-        response: String::from("all good boss"),
+        status: status_code.as_u16(),
+        response: return_string,
     };
     //println!("Handling response to {:#?}", payload.);
     Json(response).into_response()
@@ -54,12 +72,12 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
 #[derive(Deserialize, Clone)]
 struct CompanionInput {
     finalURL: String,
-    finalHeaders: String,
-    finalBody: String,
-    finalMethod: String,
+    //finalHeaders: HashMap<String, String>,
+    //finalBody: HashMap<String, String>,
+    //finalMethod: String,
 }
 #[derive(Serialize)]
 struct CompanionResponse {
-    status: i32,
+    status: u16,
     response: String,
 }

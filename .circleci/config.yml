@@ -5,6 +5,7 @@ version: 2.1
 orbs:
   win: circleci/windows@2.2.0
   node: circleci/node@5.1.0
+  rust: circleci/rust@1.6.0
 
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
@@ -46,4 +47,7 @@ jobs:
 workflows:
   builds:
     jobs:
-      - buildWindows
+#      - buildWindows
+#      - buildMac
+      - rust/lint-test-build:
+          release: true

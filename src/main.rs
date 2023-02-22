@@ -1,7 +1,7 @@
 use axum::{response::IntoResponse, response::Response, routing::post, Json, Router};
-use reqwest::StatusCode;
+use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
+use std::{collections::HashMap, net::SocketAddr};
 use tower_http::cors::CorsLayer;
 
 #[tokio::main]
@@ -30,9 +30,24 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
     let received = payload.to_owned();
     let client = reqwest::Client::new();
 
+    let attach_headers = |mut to_send: RequestBuilder| -> RequestBuilder {
+        for (key, value) in received.final_headers {
+            to_send = to_send.header(key, value);
+        }
+        return to_send;
+    };
+
     let response = match payload.final_method.as_str() {
-        "Get" => Some(client.get(received.final_url).send().await),
-        "Post" => Some(client.post(received.final_url).send().await),
+        "Get" => {
+            let mut to_send = client.get(received.final_url);
+            to_send = attach_headers(to_send);
+            Some(to_send.send().await)
+        }
+        "Post" => {
+            let mut to_send: RequestBuilder = client.post(received.final_url);
+            to_send = attach_headers(to_send);
+            Some(to_send.body(received.final_body).send().await)
+        }
         _ => None,
     };
 
@@ -62,8 +77,10 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
 struct CompanionInput {
     #[serde(rename = "finalURL")]
     final_url: String,
-    //finalHeaders: HashMap<String, String>,
-    //finalBody: HashMap<String, String>,
+    #[serde(rename = "finalHeaders")]
+    final_headers: HashMap<String, String>,
+    #[serde(rename = "finalBody")]
+    final_body: String,
     #[serde(rename = "finalMethod")]
     final_method: String,
 }

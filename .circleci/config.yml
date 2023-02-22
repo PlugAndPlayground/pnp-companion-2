@@ -38,6 +38,14 @@ jobs:
       - store_artifacts:
           path: binaries_macos_unix.7z
           destination: binaries_macos_unix.7z
+  buildDocker:
+    docker:
+      - image: rust
+    steps: 
+      - run: cargo build
+
+
+
 
 
 
@@ -47,7 +55,8 @@ jobs:
 workflows:
   builds:
     jobs:
+      - buildDocker
 #      - buildWindows
 #      - buildMac
-      - rust/lint-test-build:
-          release: true
+#      - rust/lint-test-build:
+#          release: true

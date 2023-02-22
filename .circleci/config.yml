@@ -43,7 +43,10 @@ jobs:
       - image: rust
     steps: 
       - checkout 
-      - run: cargo build
+      - run: cargo build --release
+      - store_artifacts:
+          path: release
+          destination: release
 
 
 # Invoke jobs via workflows

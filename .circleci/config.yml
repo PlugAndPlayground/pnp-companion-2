@@ -42,12 +42,8 @@ jobs:
     docker:
       - image: rust
     steps: 
+      - checkout 
       - run: cargo build
-
-
-
-
-
 
 
 # Invoke jobs via workflows

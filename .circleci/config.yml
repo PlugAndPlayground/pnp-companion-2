@@ -44,7 +44,7 @@ jobs:
     steps: 
       - checkout 
       - run: rustup target add x86_64-pc-windows-gnu
-      - run: apt update && apt install mingw-w64
+      - run: apt update && apt install -y mingw-w64
       - run: cargo build --release --target=x86_64-pc-windows-gnu
       - store_artifacts:
           path: target\release\pnp-companion-2.exe

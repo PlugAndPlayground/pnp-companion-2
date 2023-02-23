@@ -49,6 +49,10 @@ jobs:
       - store_artifacts:
           path: target/x86_64-pc-windows-gnu/release/pnp-companion-2.exe
           destination: pnp-companion-2.exe
+      - run: cargo build --release --target=x86_64-apple-darwin
+      - store_artifacts:
+          path: target/x86_64-apple-darwin/release/pnp-companion-2
+          destination: pnp-companion-2
 
 
 # Invoke jobs via workflows

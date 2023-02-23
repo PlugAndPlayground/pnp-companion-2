@@ -47,8 +47,11 @@ jobs:
       - run: apt update && apt install -y mingw-w64
       - run: cargo build --release --target=x86_64-pc-windows-gnu
       - store_artifacts:
-          path: target\release\pnp-companion-2.exe
+          path: target/release/pnp-companion-2.exe
           destination: pnp-companion-2.exe
+      - store_artifacts:
+          path: target/x86_64-pc-windows-gnu
+          destination: pnp-companion-22.exe
 
 
 # Invoke jobs via workflows

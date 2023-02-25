@@ -29,31 +29,32 @@ jobs:
       xcode: 14.2.0
     steps:
       - checkout
-      - run: yarn install
+      - run: curl –proto ‘=https’ –tlsv1.2 -sSf https://sh.rustup.rs | sh
+      - run: cargo build
       - run: yarn build
       #- run: yarn packageUnix
-      - run: yarn packageMac
-      - run: brew install p7zip
-      - run: 7z a -mx=5 binaries_macos_unix.7z ./dist/
-      - store_artifacts:
-          path: binaries_macos_unix.7z
-          destination: binaries_macos_unix.7z
+      #- run: yarn packageMac
+      #- run: brew install p7zip
+      #- run: 7z a -mx=5 binaries_macos_unix.7z ./dist/
+      #- store_artifacts:
+      #    path: binaries_macos_unix.7z
+      #    destination: binaries_macos_unix.7z
   buildDocker:
     docker:
       - image: rust
     steps: 
       - checkout 
       - run: rustup target add x86_64-pc-windows-gnu
-      - run: rustup target add x86_64-apple-darwin
+      #- run: rustup target add x86_64-apple-darwin
       - run: apt update && apt install -y mingw-w64
       - run: cargo build --release --target=x86_64-pc-windows-gnu
       - store_artifacts:
           path: target/x86_64-pc-windows-gnu/release/pnp-companion-2.exe
           destination: pnp-companion-2.exe
-      - run: cargo build --release --target=x86_64-apple-darwin
-      - store_artifacts:
-          path: target/x86_64-apple-darwin/release/pnp-companion-2
-          destination: pnp-companion-2
+      #- run: cargo build --release --target=x86_64-apple-darwin
+      #- store_artifacts:
+      #    path: target/x86_64-apple-darwin/release/pnp-companion-2
+      #    destination: pnp-companion-2
 
 
 # Invoke jobs via workflows
@@ -63,6 +64,6 @@ workflows:
     jobs:
       - buildDocker
 #      - buildWindows
-#      - buildMac
+      - buildMac
 #      - rust/lint-test-build:
 #          release: true

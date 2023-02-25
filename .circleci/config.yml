@@ -32,6 +32,10 @@ jobs:
       - run: brew install rustup
       - run: rustup-init -y
       - run: cargo build --release
+      - run: ls
+      - store_artifacts:
+          path: target/release/pnp-companion-2
+          destination: pnp-companion-2
       #- run: yarn build
       #- run: yarn packageUnix
       #- run: yarn packageMac

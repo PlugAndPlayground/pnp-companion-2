@@ -29,7 +29,8 @@ jobs:
       xcode: 14.2.0
     steps:
       - checkout
-      - run: curl –proto ‘=https’ –tlsv1.2 -sSf https://sh.rustup.rs | sh
+      - run: brew install rustup
+      - run: rustup-init
       - run: cargo build
       - run: yarn build
       #- run: yarn packageUnix

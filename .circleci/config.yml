@@ -31,7 +31,7 @@ jobs:
       - checkout
       - run: brew install rustup
       - run: rustup-init -y
-      - run: cargo build
+      - run: cargo build --release
       #- run: yarn build
       #- run: yarn packageUnix
       #- run: yarn packageMac

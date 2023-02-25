@@ -30,9 +30,9 @@ jobs:
     steps:
       - checkout
       - run: brew install rustup
-      - run: rustup-init
+      - run: rustup-init -y
       - run: cargo build
-      - run: yarn build
+      #- run: yarn build
       #- run: yarn packageUnix
       #- run: yarn packageMac
       #- run: brew install p7zip

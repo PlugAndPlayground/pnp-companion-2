@@ -8,12 +8,12 @@ description = "companion to plugandplayground for handling API communication"
 [package.metadata.bundle]
 name = "pnp-companion"
 identifier = "pnp-companion"
-icon = ["31x32.png", "128x128.png", "128x128@2x.png"]
+icon = ["pnp.png"]
 version = "1.0.0"
-resources = ["assets", "images/**/*.png", "secrets/public_key.txt"]
+resources = ["resources"]
 category = "Developer Tool"
 short_description = "An example application."
-deb_depends = ["libgl0-mesa-glx", "libsdl2-2.0-0 (>= 2.0.5)"]
+#deb_depends = ["libgl0-mesa-glx", "libsdl2-2.0-0 (>= 2.0.5)"]
 osx_url_schemes = ["com.doe.exampleapplication"]
 
 

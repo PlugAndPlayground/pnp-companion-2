@@ -1,8 +1,21 @@
 [package]
-name = "pnp-companion-2"
+name = "pnp-companion"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
+description = "companion to plugandplayground for handling API communication"
+
+[package.metadata.bundle]
+name = "pnp-companion"
+identifier = "pnp-companion"
+icon = ["31x32.png", "128x128.png", "128x128@2x.png"]
+version = "1.0.0"
+resources = ["assets", "images/**/*.png", "secrets/public_key.txt"]
+category = "Developer Tool"
+short_description = "An example application."
+deb_depends = ["libgl0-mesa-glx", "libsdl2-2.0-0 (>= 2.0.5)"]
+osx_url_schemes = ["com.doe.exampleapplication"]
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -18,3 +31,4 @@ reqwest = "0.11.14"
 
 [build-dependencies]
 winres = "0.1"
+cargo-bundle="0.6.0"

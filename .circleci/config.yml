@@ -34,9 +34,16 @@ jobs:
       - run: rustup target add aarch64-apple-darwin
       - run: cargo build --release --target=aarch64-apple-darwin
       - run: cargo build --release --target=x86_64-apple-darwin
+      - run: pip install mac-appify 
+      - run: appify binaries_x86.7z target/aarch64-apple-darwin/release/pnp-companion-2 pnp-companion.app
+      - store_artifacts:
+          path: pnp-companion.app
+          destination: pnp-companion.app
+
       - run: brew install p7zip
       - run: 7z a -mx=5 binaries_x86.7z target/x86_64-apple-darwin/release/pnp-companion-2
       - run: 7z a -mx=5 binaries_aarch.7z target/aarch64-apple-darwin/release/pnp-companion-2
+
       - store_artifacts:
           path: binaries_x86.7z
           destination: binaries_x86.7z

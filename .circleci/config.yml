@@ -10,20 +10,17 @@ orbs:
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
   buildWindows:
-    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     executor:
       name: win/default
       shell: powershell.exe
-    # Add steps to the job
-    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
       - checkout
-      - run: choco install rust
+      - run: ./rustup-init.exe -y
       - run: cargo build --release
-#      - store_artifacts:
-#          path: binaries_windows.7z
-#          destination: binaries_macos_unix.7z
+      - store_artifacts:
+          path: target
+          destination: pnp-companion-2.exe
+
   buildMac:
     macos:
       xcode: 14.2.0
@@ -34,11 +31,11 @@ jobs:
       - run: rustup target add aarch64-apple-darwin
       - run: cargo build --release --target=aarch64-apple-darwin
       - run: cargo build --release --target=x86_64-apple-darwin
-      - run: pip install mac-appify 
-      - run: appify binaries_x86.7z target/aarch64-apple-darwin/release/pnp-companion-2 pnp-companion.app
-      - store_artifacts:
-          path: pnp-companion.app
-          destination: pnp-companion.app
+#      - run: pip install mac-appify 
+#      - run: appify target/aarch64-apple-darwin/release/pnp-companion-2 pnp-companion.app 
+#      - store_artifacts:
+#          path: pnp-companion.app
+#          destination: pnp-companion.app
 
       - run: brew install p7zip
       - run: 7z a -mx=5 binaries_x86.7z target/x86_64-apple-darwin/release/pnp-companion-2
@@ -74,8 +71,8 @@ jobs:
 workflows:
   builds:
     jobs:
-      - buildDocker
-#      - buildWindows
+#      - buildDocker
+      - buildWindows
       - buildMac
 #      - rust/lint-test-build:
 #          release: true

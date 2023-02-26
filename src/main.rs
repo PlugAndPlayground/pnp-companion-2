@@ -14,7 +14,7 @@ async fn main() {
 async fn start_server() {
     // initialize tracing
     tracing_subscriber::fmt::init();
-    println!("Starting server on {}", PORT);
+    println!("Starting server on: {}", PORT);
 
     // build our application with a route
     let app = Router::new()

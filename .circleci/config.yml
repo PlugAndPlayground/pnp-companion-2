@@ -31,7 +31,7 @@ jobs:
       - checkout
       - run: brew install rustup
       - run: rustup-init -y
-      - run: cargo build --release
+      - run: cargo build --release --target=aarch64-apple-darwin
       - run: ls
       - store_artifacts:
           path: target/release/pnp-companion-2

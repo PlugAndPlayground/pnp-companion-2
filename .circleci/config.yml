@@ -31,10 +31,14 @@ jobs:
       - checkout
       - run: brew install rustup
       - run: rustup-init -y
+      - run: rustup target add aarch64-apple-darwin
       - run: cargo build --release --target=aarch64-apple-darwin
       - store_artifacts:
           path: target/release/pnp-companion-2
           destination: pnp-companion-2
+      - store_artifacts:
+          path: target/aarch64-apple-darwin/release/pnp-companion-2
+          destination: pnp-companion-2_2
       #- run: yarn build
       #- run: yarn packageUnix
       #- run: yarn packageMac

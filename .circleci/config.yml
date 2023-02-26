@@ -31,9 +31,11 @@ jobs:
       - run: rustup target add aarch64-apple-darwin
       - run: cargo install cargo-bundle
       - run: cargo bundle --release
+      - run: brew install p7zip
+      - run: 7z a pnp-companion-mac.7z target/release/bundle/osx/pnp-companion.app
       - store_artifacts:
-          path: target/release/bundle/osx/pnp-companion.app
-          destination: pnp-companion.app
+          path: pnp-companion-mac.7z
+          destination: pnp-companion-mac.7z
       
       #- run: cargo build --release --target=aarch64-apple-darwin
       #- run: cargo build --release --target=x86_64-apple-darwin

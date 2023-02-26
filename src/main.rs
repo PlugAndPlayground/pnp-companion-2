@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::SocketAddr};
 use tower_http::cors::CorsLayer;
 
+static PORT: u16 = 6655;
+
 #[tokio::main]
 async fn main() {
     start_server().await;
@@ -12,13 +14,14 @@ async fn main() {
 async fn start_server() {
     // initialize tracing
     tracing_subscriber::fmt::init();
+    println!("Starting server on {}", PORT);
 
     // build our application with a route
     let app = Router::new()
         .route("/", post(pnp_request))
         .layer(CorsLayer::permissive());
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 6655));
+    let addr = SocketAddr::from(([127, 0, 0, 1], PORT));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())

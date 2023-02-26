@@ -33,21 +33,17 @@ jobs:
       - run: rustup-init -y
       - run: rustup target add aarch64-apple-darwin
       - run: cargo build --release --target=aarch64-apple-darwin
-      - run: cargo build --release --target=x86_64-apple-darwin 
+      - run: cargo build --release --target=x86_64-apple-darwin
+      - run: brew install p7zip
+      - run: 7z a -mx=5 binaries_x86.7z target/x86_64-apple-darwin/release/pnp-companion-2
+      - run: 7z a -mx=5 binaries_aarch.7z target/aarch64-apple-darwin/release/pnp-companion-2
       - store_artifacts:
-          path: target/x86_64-apple-darwin/release/pnp-companion-2
-          destination: pnp-companion-2-x86.app
+          path: binaries_x86.7z
+          destination: binaries_x86.7z
       - store_artifacts:
-          path: target/aarch64-apple-darwin/release/pnp-companion-2
-          destination: pnp-companion-2-arch.app
-      #- run: yarn build
-      #- run: yarn packageUnix
-      #- run: yarn packageMac
-      #- run: brew install p7zip
-      #- run: 7z a -mx=5 binaries_macos_unix.7z ./dist/
-      #- store_artifacts:
-      #    path: binaries_macos_unix.7z
-      #    destination: binaries_macos_unix.7z
+          path: binaries_aarch.7z
+          destination: binaries_aarch.7z
+
   buildDocker:
     docker:
       - image: rust

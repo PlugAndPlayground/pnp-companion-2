@@ -8,7 +8,7 @@ description = "companion to plugandplayground for handling API communication"
 [package.metadata.bundle]
 name = "pnp-companion"
 identifier = "pnp-companion"
-icon = ["pnp.png"]
+icon = ["pnp.png", "pnp-companion.icns"]
 version = "1.0.0"
 resources = ["resources"]
 category = "Developer Tool"

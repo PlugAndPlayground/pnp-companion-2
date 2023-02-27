@@ -16,9 +16,10 @@ jobs:
     steps:
       - checkout
       - run: ./rustup-init.exe -y
-      - run: cargo build --release
+      - run: cargo install cargo-bundle
+      - run: cargo bundle --release
       - store_artifacts:
-          path: target
+          path: target/release/pnp-companion-2.exe
           destination: pnp-companion-2.exe
 
   buildMac:
@@ -79,8 +80,8 @@ jobs:
 workflows:
   builds:
     jobs:
-      - buildDocker
-#      - buildWindows
+#      - buildDocker
+      - buildWindows
       - buildMac
 #      - rust/lint-test-build:
 #          release: true

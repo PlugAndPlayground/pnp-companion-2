@@ -3,6 +3,7 @@ use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::SocketAddr};
 use tower_http::cors::CorsLayer;
+use xml2json_rs::JsonBuilder;
 
 static PORT: u16 = 6655;
 
@@ -27,6 +28,15 @@ async fn start_server() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+fn convert_to_json_string(text: String) -> String {
+    let json_builder = JsonBuilder::default();
+    let jsond_xml = json_builder.build_string_from_xml(text.as_str());
+    match jsond_xml {
+        Ok(a) => a,
+        Err(_) => text,
+    }
 }
 
 async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
@@ -61,7 +71,7 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
                 status_code = res.status();
                 let payload = res.text().await;
                 match payload {
-                    Ok(text) => text,
+                    Ok(text) => convert_to_json_string(text),
                     Err(e) => String::from(e.to_string()),
                 }
             }
@@ -69,6 +79,7 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
         },
         None => String::from("{\"Response\":\"Invalid method\"}"),
     };
+    //println!("res: {}", return_string);
 
     let response = CompanionResponse {
         status: status_code.as_u16(),

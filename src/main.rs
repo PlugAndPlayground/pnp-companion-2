@@ -1,7 +1,9 @@
 use axum::{response::IntoResponse, response::Response, routing::post, Json, Router};
+use regex::Regex;
 use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::env;
+use std::os::windows::process;
 use std::{collections::HashMap, net::SocketAddr};
 use tower_http::cors::CorsLayer;
 use xml2json_rs::JsonBuilder;
@@ -13,15 +15,6 @@ async fn main() {
     start_server().await;
 }
 
-fn get_env_var(key: &str) -> String {
-    match env::var(key) {
-        Ok(value) => value,
-        Err(e) => {
-            println!("Couldn't read environment variable {}: {}", key, e);
-            String::from("UNKNOWN_ENV_VARIABLE")
-        }
-    }
-}
 async fn start_server() {
     // initialize tracing
     tracing_subscriber::fmt::init();
@@ -38,6 +31,26 @@ async fn start_server() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+fn get_env_var(key: &str) -> String {
+    match env::var(key) {
+        Ok(value) => value,
+        Err(e) => {
+            println!("Couldn't read environment variable {}: {}", key, e);
+            String::from("UNKNOWN_ENV_VARIABLE")
+        }
+    }
+}
+
+fn replace_variables(input: String) -> String {
+    let regex = Regex::new(r"\$\{(.+?)\}").unwrap();
+    regex
+        .replace_all(input.as_str(), |caps: &regex::Captures| {
+            let key = &caps[1];
+            get_env_var(key).to_string()
+        })
+        .to_string()
 }
 
 fn convert_to_json_string(text: String) -> String {
@@ -81,7 +94,7 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
                 status_code = res.status();
                 let payload = res.text().await;
                 match payload {
-                    Ok(text) => convert_to_json_string(text),
+                    Ok(text) => convert_to_json_string(replace_variables(text)),
                     Err(e) => String::from(e.to_string()),
                 }
             }

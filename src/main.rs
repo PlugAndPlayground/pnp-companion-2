@@ -1,6 +1,7 @@
 use axum::{response::IntoResponse, response::Response, routing::post, Json, Router};
 use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::{collections::HashMap, net::SocketAddr};
 use tower_http::cors::CorsLayer;
 use xml2json_rs::JsonBuilder;
@@ -12,6 +13,15 @@ async fn main() {
     start_server().await;
 }
 
+fn get_env_var(key: &str) -> String {
+    match env::var(key) {
+        Ok(value) => value,
+        Err(e) => {
+            println!("Couldn't read environment variable {}: {}", key, e);
+            String::from("UNKNOWN_ENV_VARIABLE")
+        }
+    }
+}
 async fn start_server() {
     // initialize tracing
     tracing_subscriber::fmt::init();

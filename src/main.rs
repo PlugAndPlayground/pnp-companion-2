@@ -67,7 +67,7 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
 
     let attach_headers = |mut to_send: RequestBuilder| -> RequestBuilder {
         for (key, value) in received.final_headers {
-            to_send = to_send.header(key, value);
+            to_send = to_send.header(key, replace_variables(value));
         }
         return to_send;
     };
@@ -81,7 +81,12 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
         "Post" => {
             let mut to_send: RequestBuilder = client.post(received.final_url);
             to_send = attach_headers(to_send);
-            Some(to_send.body(received.final_body).send().await)
+            Some(
+                to_send
+                    .body(replace_variables(received.final_body))
+                    .send()
+                    .await,
+            )
         }
         _ => None,
     };
@@ -93,7 +98,7 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
                 status_code = res.status();
                 let payload = res.text().await;
                 match payload {
-                    Ok(text) => convert_to_json_string(replace_variables(text)),
+                    Ok(text) => convert_to_json_string(text),
                     Err(e) => String::from(e.to_string()),
                 }
             }

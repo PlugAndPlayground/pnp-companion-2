@@ -28,6 +28,7 @@ tokio = { version = "1.25.0", features = ["full"] }
 tower-http = {version="0.4.0", features = ["cors"]}
 reqwest = "0.11.14"
 xml2json-rs = "1.0.1"
+regex = "1.7.3"
 
 [build-dependencies]
 winres = "0.1"

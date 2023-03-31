@@ -1,6 +1,8 @@
 use axum::{response::IntoResponse, response::Response, routing::post, Json, Router};
+use regex::Regex;
 use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::{collections::HashMap, net::SocketAddr};
 use tower_http::cors::CorsLayer;
 use xml2json_rs::JsonBuilder;
@@ -30,6 +32,26 @@ async fn start_server() {
         .unwrap();
 }
 
+fn get_env_var(key: &str) -> String {
+    match env::var(key) {
+        Ok(value) => value,
+        Err(e) => {
+            println!("Couldn't read environment variable {}: {}", key, e);
+            String::from("UNKNOWN_ENV_VARIABLE")
+        }
+    }
+}
+
+fn replace_variables(input: String) -> String {
+    let regex = Regex::new(r"\$\{(.+?)\}").unwrap();
+    regex
+        .replace_all(input.as_str(), |caps: &regex::Captures| {
+            let key = &caps[1];
+            get_env_var(key).to_string()
+        })
+        .to_string()
+}
+
 fn convert_to_json_string(text: String) -> String {
     let json_builder = JsonBuilder::default();
     let jsond_xml = json_builder.build_string_from_xml(text.as_str());
@@ -45,7 +67,7 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
 
     let attach_headers = |mut to_send: RequestBuilder| -> RequestBuilder {
         for (key, value) in received.final_headers {
-            to_send = to_send.header(key, value);
+            to_send = to_send.header(key, replace_variables(value));
         }
         return to_send;
     };
@@ -59,7 +81,12 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
         "Post" => {
             let mut to_send: RequestBuilder = client.post(received.final_url);
             to_send = attach_headers(to_send);
-            Some(to_send.body(received.final_body).send().await)
+            Some(
+                to_send
+                    .body(replace_variables(received.final_body))
+                    .send()
+                    .await,
+            )
         }
         _ => None,
     };

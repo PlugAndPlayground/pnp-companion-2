@@ -56,7 +56,14 @@ fn convert_to_json_string(text: String) -> String {
     let json_builder = JsonBuilder::default();
     let jsond_xml = json_builder.build_string_from_xml(text.as_str());
     match jsond_xml {
-        Ok(a) => a,
+        Ok(a) => {
+            // this is a little bit hacky but I don't know why the lib returns an OK that looks like "null"
+            if a.len() > 0 && a != "null" {
+                return a;
+            } else {
+                return text;
+            }
+        }
         Err(_) => text,
     }
 }

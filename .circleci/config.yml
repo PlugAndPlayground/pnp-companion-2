@@ -67,12 +67,8 @@ jobs:
       - run: apt update && apt install -y mingw-w64
       - run: cargo build --release --target=x86_64-pc-windows-gnu
       - store_artifacts:
-          path: target/x86_64-pc-windows-gnu/release/pnp-companion-2.exe
+          path: target/x86_64-pc-windows-gnu/release
           destination: pnp-companion-2.exe
-      #- run: cargo build --release --target=x86_64-apple-darwin
-      #- store_artifacts:
-      #    path: target/x86_64-apple-darwin/release/pnp-companion-2
-      #    destination: pnp-companion-2
 
 
 # Invoke jobs via workflows

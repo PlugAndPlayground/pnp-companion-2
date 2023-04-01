@@ -77,7 +77,7 @@ workflows:
   builds:
     jobs:
       - buildDocker
-#      - buildWindows
+      - buildWindows
       - buildMac
 #      - rust/lint-test-build:
 #          release: true

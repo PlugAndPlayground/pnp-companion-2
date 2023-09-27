@@ -33,10 +33,13 @@ jobs:
       - run: cargo install cargo-bundle
       - run: cargo bundle --release
       - run: brew install p7zip
-      - run: 7z a pnp-companion-mac.7z target/release/bundle/osx/pnp-companion.app
+      - run:
+          name: Create 7z archive with build number
+          command: |
+            7z a "pnp-companion-mac-$CIRCLE_BUILD_NUM.7z" target/release/bundle/osx/pnp-companion.app
       - store_artifacts:
-          path: pnp-companion-mac.7z
-          destination: pnp-companion-mac-$CIRCLE_BUILD_NUM.7z
+          path: "pnp-companion-mac-$CIRCLE_BUILD_NUM.7z"
+          destination: "pnp-companion-mac.7z"
       
   buildDocker:
     docker:
@@ -46,9 +49,9 @@ jobs:
       - run: rustup target add x86_64-pc-windows-gnu
       - run: apt update && apt install -y mingw-w64
       - run: cargo build --release --target=x86_64-pc-windows-gnu
+      - run: mv target/x86_64-pc-windows-gnu/release/pnp-companion.exe target/x86_64-pc-windows-gnu/release/pnp-companion-$CIRCLE_BUILD_NUM.exe
       - store_artifacts:
-          path: target/x86_64-pc-windows-gnu/release/pnp-companion.exe
-          destination: pnp-companion-$CIRCLE_BUILD_NUM.exe
+          path: target/x86_64-pc-windows-gnu/release/pnp-companion-$CIRCLE_BUILD_NUM.exe
 
 
 # Invoke jobs via workflows

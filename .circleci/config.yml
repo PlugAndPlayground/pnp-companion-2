@@ -34,11 +34,8 @@ jobs:
       - run: cargo bundle --release
       - run: brew install p7zip
       - run: 7z a pnp-companion-mac.7z target/release/bundle/osx/pnp-companion.app
-      - run:
-          name: Rename 7z with build number
-          command: mv pnp-companion-mac.7z pnp-companion-mac-$CIRCLE_BUILD_NUM.7z
       - store_artifacts:
-          path: pnp-companion-mac-$CIRCLE_BUILD_NUM.7z
+          path: pnp-companion-mac.7z
           destination: pnp-companion-mac-$CIRCLE_BUILD_NUM.7z
       
   buildDocker:
@@ -49,11 +46,8 @@ jobs:
       - run: rustup target add x86_64-pc-windows-gnu
       - run: apt update && apt install -y mingw-w64
       - run: cargo build --release --target=x86_64-pc-windows-gnu
-      - run:
-          name: Rename executable with build number
-          command: mv target/release/pnp-companion.exe target/release/pnp-companion-$CIRCLE_BUILD_NUM.exe
       - store_artifacts:
-          path: target/release/pnp-companion-$CIRCLE_BUILD_NUM.exe
+          path: target/x86_64-pc-windows-gnu/release/pnp-companion.exe
           destination: pnp-companion-$CIRCLE_BUILD_NUM.exe
 
 

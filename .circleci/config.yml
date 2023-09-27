@@ -34,41 +34,27 @@ jobs:
       - run: cargo bundle --release
       - run: brew install p7zip
       - run: 7z a pnp-companion-mac.7z target/release/bundle/osx/pnp-companion.app
+      - run:
+          name: Rename 7z with build number
+          command: mv pnp-companion-mac.7z pnp-companion-mac-$CIRCLE_BUILD_NUM.7z
       - store_artifacts:
-          path: pnp-companion-mac.7z
-          destination: pnp-companion-mac.7z
+          path: pnp-companion-mac-$CIRCLE_BUILD_NUM.7z
+          destination: pnp-companion-mac-$CIRCLE_BUILD_NUM.7z
       
-      #- run: cargo build --release --target=aarch64-apple-darwin
-      #- run: cargo build --release --target=x86_64-apple-darwin
-#      - run: pip install mac-appify 
-#      - run: appify target/aarch64-apple-darwin/release/pnp-companion-2 pnp-companion.app 
-#      - store_artifacts:
-#          path: pnp-companion.app
-#          destination: pnp-companion.app
-
-      #- run: brew install p7zip
-      #- run: 7z a -mx=5 binaries_x86.7z target/x86_64-apple-darwin/release/pnp-companion-2
-      #- run: 7z a -mx=5 binaries_aarch.7z target/aarch64-apple-darwin/release/pnp-companion-2
-
-      #- store_artifacts:
-      #    path: binaries_x86.7z
-      #    destination: binaries_x86.7z
-      #- store_artifacts:
-      #    path: binaries_aarch.7z
-      #    destination: binaries_aarch.7z
-
   buildDocker:
     docker:
       - image: rust
     steps: 
       - checkout 
       - run: rustup target add x86_64-pc-windows-gnu
-      #- run: rustup target add x86_64-apple-darwin
       - run: apt update && apt install -y mingw-w64
       - run: cargo build --release --target=x86_64-pc-windows-gnu
+      - run:
+          name: Rename executable with build number
+          command: mv target/release/pnp-companion.exe target/release/pnp-companion-$CIRCLE_BUILD_NUM.exe
       - store_artifacts:
-          path: target/x86_64-pc-windows-gnu/release/pnp-companion.exe
-          destination: pnp-companion.exe
+          path: target/release/pnp-companion-$CIRCLE_BUILD_NUM.exe
+          destination: pnp-companion-$CIRCLE_BUILD_NUM.exe
 
 
 # Invoke jobs via workflows
@@ -77,7 +63,5 @@ workflows:
   builds:
     jobs:
       - buildDocker
-#      - buildWindows
       - buildMac
-#      - rust/lint-test-build:
-#          release: true
+

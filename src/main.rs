@@ -58,7 +58,7 @@ fn replace_variables(input: String) -> String {
         general_purpose::STANDARD_NO_PAD.encode(in_string)
     })];
     for (name, func) in available_functions {
-        let function_reg_string = format!("\\${}\\{{(.+?)\\}}", name);
+        let function_reg_string = format!("\\${}\\{{(.+)\\}}", name);
         let function_regex: Regex = Regex::new(&function_reg_string).unwrap();
 
         out_string = function_regex

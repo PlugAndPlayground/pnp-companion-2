@@ -132,7 +132,7 @@ async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
             }
             Err(e) => String::from(e.to_string()),
         },
-        None => String::from("{\"Response\":\"Invalid method\"}"),
+        None => String::from("{\"Response\":\"Invalid method thinks companion\"}"),
     };
     //println!("res: {}", return_string);
 

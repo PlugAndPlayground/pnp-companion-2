@@ -45,6 +45,7 @@ fn get_env_var(key: &str) -> String {
 
 fn replace_variables(input: String) -> String {
     // first we replace environmental variables
+    //println!("Input str: {}", input);
     let env_variable_regex: Regex = Regex::new(r"\$\{(.+?)\}").unwrap();
     let mut out_string = env_variable_regex
         .replace_all(input.as_str(), |caps: &regex::Captures| {
@@ -54,6 +55,8 @@ fn replace_variables(input: String) -> String {
         .to_string();
 
     // then we perform all specific functions based on their names
+
+    //println!("After variable replacements: {}", out_string);
     let available_functions = [("BASE64_ENCODE", |in_string: &str| -> String {
         general_purpose::STANDARD_NO_PAD.encode(in_string)
     })];
@@ -62,14 +65,15 @@ fn replace_variables(input: String) -> String {
         let function_regex: Regex = Regex::new(&function_reg_string).unwrap();
 
         out_string = function_regex
-            .replace_all(input.as_str(), |caps: &regex::Captures| {
+            .replace_all(&out_string.as_str(), |caps: &regex::Captures| {
                 let key = &caps[1];
+                //println!("key to convert: {}", key);
                 func(key)
             })
             .to_string();
     }
 
-    println!("{}", out_string);
+    //println!("{}", out_string);
     out_string
 }
 

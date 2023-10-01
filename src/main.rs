@@ -1,4 +1,5 @@
 use axum::{response::IntoResponse, response::Response, routing::post, Json, Router};
+use base64::{engine::general_purpose, Engine as _};
 use regex::Regex;
 use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -43,13 +44,33 @@ fn get_env_var(key: &str) -> String {
 }
 
 fn replace_variables(input: String) -> String {
-    let regex = Regex::new(r"\$\{(.+?)\}").unwrap();
-    regex
+    // first we replace environmental variables
+    let env_variable_regex: Regex = Regex::new(r"\$\{(.+?)\}").unwrap();
+    let mut out_string = env_variable_regex
         .replace_all(input.as_str(), |caps: &regex::Captures| {
             let key = &caps[1];
             get_env_var(key).to_string()
         })
-        .to_string()
+        .to_string();
+
+    // then we perform all specific functions based on their names
+    let available_functions = [("BASE64_ENCODE", |in_string: &str| -> String {
+        general_purpose::STANDARD_NO_PAD.encode(in_string)
+    })];
+    for (name, func) in available_functions {
+        let function_reg_string = format!("\\${}\\{{(.+?)\\}}", name);
+        let function_regex: Regex = Regex::new(&function_reg_string).unwrap();
+
+        out_string = function_regex
+            .replace_all(input.as_str(), |caps: &regex::Captures| {
+                let key = &caps[1];
+                func(key)
+            })
+            .to_string();
+    }
+
+    println!("{}", out_string);
+    out_string
 }
 
 fn convert_to_json_string(text: String) -> String {

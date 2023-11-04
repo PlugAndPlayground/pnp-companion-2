@@ -30,6 +30,8 @@ reqwest = "0.11.14"
 xml2json-rs = "1.0.1"
 regex = "1.7.3"
 base64 = "0.21.4"
+tray-icon = "0.10.0"
+image = "0.24.7"
 [build-dependencies]
 winres = "0.1"
 cargo-bundle="0.6.0"

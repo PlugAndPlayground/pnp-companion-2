@@ -6,7 +6,10 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::{collections::HashMap, net::SocketAddr};
 use tower_http::cors::CorsLayer;
+use tray_icon::{Icon, TrayIconBuilder};
 use xml2json_rs::JsonBuilder;
+
+static ICON: &'static [u8] = include_bytes!("../resources/pnp.png");
 
 static PORT: u16 = 6655;
 
@@ -19,6 +22,16 @@ async fn start_server() {
     // initialize tracing
     tracing_subscriber::fmt::init();
     println!("Starting server on: {}", PORT);
+
+    let img = image::load_from_memory(ICON).unwrap().into_rgba8();
+    let (width, height) = img.dimensions();
+    let icon = Icon::from_rgba(img.into_raw(), width as u32, height as u32).unwrap();
+    //let icon = Icon::from_rgba(ICON.to_vec(), 16, 16).unwrap();
+    let _tray_icon = TrayIconBuilder::new()
+        .with_tooltip(format!("PNP companion running on port {}", PORT))
+        .with_icon(icon)
+        .build()
+        .unwrap();
 
     // build our application with a route
     let app = Router::new()

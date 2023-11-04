@@ -1,15 +1,11 @@
 //#![windows_subsystem = "windows"]
-use axum::{response::IntoResponse, response::Response, routing::post, Json, Router};
-use base64::{engine::general_purpose, Engine as _};
-use regex::Regex;
-use reqwest::{RequestBuilder, StatusCode};
-use serde::{Deserialize, Serialize};
-use std::env;
-use std::{collections::HashMap, net::SocketAddr};
+use axum::{routing::post, Router};
+
+use std::net::SocketAddr;
+use tokio::signal;
 use tower_http::cors::CorsLayer;
 use tray_icon::menu::Menu;
-use tray_icon::{Icon, TrayIconBuilder, TrayIconEvent};
-use xml2json_rs::JsonBuilder;
+use tray_icon::{Icon, TrayIconBuilder};
 mod response_handler;
 
 static ICON: &'static [u8] = include_bytes!("../resources/pnp.png");
@@ -51,7 +47,7 @@ async fn start_server() {
         .build()
         .unwrap();
 
-    //start_tray_icon();
+    //start_tray_icon(); // TODO FIX THIS
     tracing_subscriber::fmt::init();
     println!("Starting server on: {}", PORT);
 
@@ -64,6 +60,33 @@ async fn start_server() {
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    println!("signal received, starting graceful shutdown");
 }

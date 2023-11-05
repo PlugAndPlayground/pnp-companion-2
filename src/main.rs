@@ -1,10 +1,9 @@
-#![windows_subsystem = "windows"]
+//#![windows_subsystem = "windows"]
 use axum::{routing::post, Router};
 
 use std::net::SocketAddr;
-use tokio::signal;
 use tower_http::cors::CorsLayer;
-use tray_icon::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tray_icon::menu::{Menu, PredefinedMenuItem};
 use tray_icon::{Icon, TrayIconBuilder};
 mod response_handler;
 
@@ -13,10 +12,6 @@ static PORT: u16 = 6655;
 
 #[tokio::main]
 async fn main() {
-    start_server().await;
-}
-
-async fn start_server() {
     let img = image::load_from_memory(ICON).unwrap().into_rgba8();
     let (width, height) = img.dimensions();
     let icon = Icon::from_rgba(img.into_raw(), width as u32, height as u32).unwrap();
@@ -32,6 +27,24 @@ async fn start_server() {
         .build()
         .unwrap();
 
+    tokio::task::spawn(start_server());
+
+    // Capture Ctrl+C to shutdown gracefully
+    let ctrl_c_task = tokio::signal::ctrl_c();
+
+    tokio::select! {
+        _ = ctrl_c_task => {
+            println!("Received Ctrl+C. Shutting down...");
+        }
+    }
+    // Explicitly drop the tray icon
+    drop(_tray_icon);
+
+    // Exit the program
+    std::process::exit(0);
+}
+
+async fn start_server() {
     tracing_subscriber::fmt::init();
     println!("Starting server on: {}", PORT);
 
@@ -44,33 +57,7 @@ async fn start_server() {
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
-        .with_graceful_shutdown(shutdown_signal())
+        //        .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
-}
-
-async fn shutdown_signal() {
-    let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
-    };
-
-    #[cfg(unix)]
-    let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
-    }
-
-    println!("signal received, starting graceful shutdown");
 }

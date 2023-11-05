@@ -3,29 +3,29 @@ use axum::{routing::post, Router};
 
 use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
-use tray_icon::menu::{Menu, PredefinedMenuItem};
-use tray_icon::{Icon, TrayIconBuilder};
+//use tray_icon::menu::{Menu, PredefinedMenuItem};
+//use tray_icon::{Icon, TrayIconBuilder};
 mod response_handler;
 
-static ICON: &'static [u8] = include_bytes!("../resources/pnp.png");
+//static ICON: &'static [u8] = include_bytes!("../resources/pnp.png");
 static PORT: u16 = 6655;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let img = image::load_from_memory(ICON).unwrap().into_rgba8();
+    // TODO fix tray icon, it crashes on mac
+    /*let img = image::load_from_memory(ICON).unwrap().into_rgba8();
     let (width, height) = img.dimensions();
     let icon = Icon::from_rgba(img.into_raw(), width as u32, height as u32).unwrap();
     //let menu = Menu::new();
     // TODO FIX TRAY ICON OPENING https://github.com/tauri-apps/tray-icon/issues/89
-    //  menu.append(&PredefinedMenuItem::quit(Some("Quit")))
-    //    .unwrap();
 
     let _tray_icon = TrayIconBuilder::new()
         .with_tooltip(format!("PNP companion running on port {}", PORT))
         .with_icon(icon)
-        //    .with_menu(Box::new(menu))
         .build()
         .unwrap();
+
+    */
 
     tokio::task::spawn(start_server());
 
@@ -38,7 +38,7 @@ async fn main() {
         }
     }
     // Explicitly drop the tray icon
-    drop(_tray_icon);
+    //drop(_tray_icon);
 
     // Exit the program
     std::process::exit(0);

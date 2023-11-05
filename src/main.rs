@@ -10,20 +10,20 @@ mod response_handler;
 static ICON: &'static [u8] = include_bytes!("../resources/pnp.png");
 static PORT: u16 = 6655;
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let img = image::load_from_memory(ICON).unwrap().into_rgba8();
     let (width, height) = img.dimensions();
     let icon = Icon::from_rgba(img.into_raw(), width as u32, height as u32).unwrap();
-    let menu = Menu::new();
+    //let menu = Menu::new();
     // TODO FIX TRAY ICON OPENING https://github.com/tauri-apps/tray-icon/issues/89
-    menu.append(&PredefinedMenuItem::quit(Some("Quit")))
-        .unwrap();
+    //  menu.append(&PredefinedMenuItem::quit(Some("Quit")))
+    //    .unwrap();
 
     let _tray_icon = TrayIconBuilder::new()
         .with_tooltip(format!("PNP companion running on port {}", PORT))
         .with_icon(icon)
-        .with_menu(Box::new(menu))
+        //    .with_menu(Box::new(menu))
         .build()
         .unwrap();
 

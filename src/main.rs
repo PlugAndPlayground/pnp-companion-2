@@ -77,7 +77,7 @@ async fn main() {
     #[cfg(target_os = "windows")]
     event_loop_function();
     #[cfg(not(target_os = "windows"))]
-    server_thread.await;
+    _server_thread.await;
 
     std::process::exit(0);
 }

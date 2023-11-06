@@ -1,47 +1,84 @@
-#![windows_subsystem = "windows"]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use axum::{routing::post, Router};
 
 use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
-use tray_icon::menu::{Menu, PredefinedMenuItem};
-use tray_icon::{Icon, TrayIconBuilder};
+use tray_icon::menu::Menu;
+use tray_icon::Icon;
+use tray_icon::{
+    menu::{AboutMetadata, MenuEvent, MenuItem, PredefinedMenuItem},
+    TrayIconBuilder, TrayIconEvent,
+};
 mod response_handler;
+use tao::event_loop::{ControlFlow, EventLoopBuilder};
 
 static ICON: &'static [u8] = include_bytes!("../resources/pnp.png");
 static PORT: u16 = 6655;
 
-fn create_tray_icon() -> tray_icon::TrayIcon {
+fn create_tray_icon() -> Box<dyn FnOnce() + 'static> {
     let img = image::load_from_memory(ICON).unwrap().into_rgba8();
     let (width, height) = img.dimensions();
     let icon = Icon::from_rgba(img.into_raw(), width as u32, height as u32).unwrap();
     let menu = Menu::new();
-    // TODO FIX TRAY ICON OPENING https://github.com/tauri-apps/tray-icon/issues/89
+    let quit_i = MenuItem::new("Quit", true, None);
+    let menu_channel = MenuEvent::receiver();
+    let tray_channel = TrayIconEvent::receiver();
+    menu.append_items(&[
+        &PredefinedMenuItem::about(
+            None,
+            Some(AboutMetadata {
+                name: Some("Plug and Playground Companion".to_string()),
+                website: Some("https://plugandplayground.dev".to_string()),
+                ..Default::default()
+            }),
+        ),
+        &PredefinedMenuItem::separator(),
+        &quit_i,
+    ])
+    .unwrap();
+    let event_loop = EventLoopBuilder::new().build();
 
-    return TrayIconBuilder::new()
-        .with_tooltip(format!("PNP companion running on port {}", PORT))
-        .with_icon(icon)
-        .with_menu(Box::new(menu))
-        .build()
-        .unwrap();
+    let mut tray_icon = Some(
+        TrayIconBuilder::new()
+            .with_menu(Box::new(menu))
+            .with_tooltip("tao - awesome windowing lib")
+            .with_icon(icon)
+            .build()
+            .unwrap(),
+    );
+
+    return Box::new(move || {
+        event_loop.run(move |_event, _, control_flow| {
+            *control_flow = ControlFlow::Poll;
+
+            if let Ok(event) = menu_channel.try_recv() {
+                if event.id == quit_i.id() {
+                    tray_icon.take();
+                    *control_flow = ControlFlow::Exit;
+                }
+                println!("{event:?}");
+            }
+
+            if let Ok(event) = tray_channel.try_recv() {
+                println!("{event:?}");
+            }
+        });
+    });
 }
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     // TODO fix tray icon, it crashes on mac
     #[cfg(target_os = "windows")]
-    let _tray_icon = create_tray_icon();
-    tokio::task::spawn(start_server());
+    let event_loop_function = create_tray_icon();
+    let _server_thread = tokio::task::spawn(start_server());
 
-    // Capture Ctrl+C to shutdown gracefully
-    let ctrl_c_task = tokio::signal::ctrl_c();
+    #[cfg(target_os = "windows")]
+    event_loop_function();
+    #[cfg(not(target_os = "windows"))]
+    server_thread.await;
 
-    tokio::select! {
-        _ = ctrl_c_task => {
-            println!("Received Ctrl+C. Shutting down...");
-        }
-    }
-
-    // Exit the program
     std::process::exit(0);
 }
 

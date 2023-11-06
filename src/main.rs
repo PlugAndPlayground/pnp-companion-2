@@ -42,7 +42,7 @@ fn create_tray_icon() -> Box<dyn FnOnce() + 'static> {
     let mut tray_icon = Some(
         TrayIconBuilder::new()
             .with_menu(Box::new(menu))
-            .with_tooltip("tao - awesome windowing lib")
+            .with_tooltip(format!("PNP Companion running on port {}", PORT))
             .with_icon(icon)
             .build()
             .unwrap(),
@@ -67,7 +67,7 @@ fn create_tray_icon() -> Box<dyn FnOnce() + 'static> {
     });
 }
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() {
     // TODO fix tray icon, it crashes on mac
     #[cfg(target_os = "windows")]

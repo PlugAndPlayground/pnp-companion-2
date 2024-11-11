@@ -1,0 +1,80 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        
+      #- name: Install cargo-bundle
+      #  run: cargo install cargo-bundle
+        
+      - name: Build Release
+        run: cargo bundle --release
+        
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pnp-companion-windows
+          path: target/release/pnp-companion.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+          
+      - name: Install cargo-bundle
+        run: cargo install cargo-bundle
+        
+      - name: Build Release
+        run: cargo bundle --release
+        
+      - name: Install 7zip
+        run: brew install p7zip
+        
+      - name: Create Archive
+        run: 7z a pnp-companion-mac.7z target/release/bundle/osx/pnp-companion.app
+        
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pnp-companion-mac
+          path: pnp-companion-mac.7z
+
+  build-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+          
+      - name: Install MinGW
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64
+          
+      - name: Build Release
+        run: cargo build --release --target=x86_64-pc-windows-gnu
+        
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pnp-companion-windows-cross
+          path: target/x86_64-pc-windows-gnu/release/pnp-companion.exe

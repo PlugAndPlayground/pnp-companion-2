@@ -73,6 +73,14 @@ fn convert_to_json_string(text: String) -> String {
     }
 }
 
+pub async fn ping() -> Response {
+    let response = CompanionResponse {
+        status: StatusCode::OK.as_u16(),
+        response: String::from("{\"status\":\"ok\"}"),
+    };
+    Json(response).into_response()
+}
+
 pub async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
     let received = payload.to_owned();
     let client = reqwest::Client::new();

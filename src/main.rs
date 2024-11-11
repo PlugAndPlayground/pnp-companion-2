@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use axum::{routing::post, Router};
+use axum::{routing::post, routing::get, Router};
 use response_handler::init_environment;
 
 use std::net::SocketAddr;
@@ -87,10 +87,10 @@ async fn main() {
 async fn start_server() {
     tracing_subscriber::fmt::init();
     println!("Starting server on: {}", PORT);
-
     // build our application with a route
     let app = Router::new()
         .route("/", post(response_handler::pnp_request))
+        .route("/ping", get(response_handler::ping))
         .layer(CorsLayer::permissive());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], PORT));

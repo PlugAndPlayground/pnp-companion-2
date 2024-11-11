@@ -1,5 +1,6 @@
 use axum::{response::IntoResponse, response::Response, Json};
 use base64::{engine::general_purpose, Engine as _};
+use dotenv::dotenv;
 use regex::Regex;
 use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -8,6 +9,7 @@ use std::env;
 use xml2json_rs::JsonBuilder;
 
 fn get_env_var(key: &str) -> String {
+    // First try to get from .env file (loaded into env vars by dotenv)
     match env::var(key) {
         Ok(value) => value,
         Err(e) => {
@@ -17,9 +19,17 @@ fn get_env_var(key: &str) -> String {
     }
 }
 
+// Initialize environment at startup
+pub fn init_environment() {
+    // Load .env file if it exists
+    match dotenv() {
+        Ok(_) => println!("Loaded .env file"),
+        Err(e) => println!("No .env file found or error loading it: {}", e),
+    }
+}
+
 fn replace_variables(input: String) -> String {
     // first we replace environmental variables
-    //println!("Input str: {}", input);
     let env_variable_regex: Regex = Regex::new(r"\$\{(.+?)\}").unwrap();
     let mut out_string = env_variable_regex
         .replace_all(input.as_str(), |caps: &regex::Captures| {
@@ -29,8 +39,6 @@ fn replace_variables(input: String) -> String {
         .to_string();
 
     // then we perform all specific functions based on their names
-
-    //println!("After variable replacements: {}", out_string);
     let available_functions = [("BASE64_ENCODE", |in_string: &str| -> String {
         general_purpose::STANDARD_NO_PAD.encode(in_string)
     })];
@@ -41,13 +49,11 @@ fn replace_variables(input: String) -> String {
         out_string = function_regex
             .replace_all(&out_string.as_str(), |caps: &regex::Captures| {
                 let key = &caps[1];
-                //println!("key to convert: {}", key);
                 func(key)
             })
             .to_string();
     }
 
-    //println!("{}", out_string);
     out_string
 }
 
@@ -112,7 +118,6 @@ pub async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
         },
         None => String::from("{\"Response\":\"Invalid method thinks companion\"}"),
     };
-    //println!("res: {}", return_string);
 
     let response = CompanionResponse {
         status: status_code.as_u16(),
@@ -120,6 +125,7 @@ pub async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
     };
     Json(response).into_response()
 }
+
 #[derive(Deserialize, Clone)]
 pub struct CompanionInput {
     #[serde(rename = "finalURL")]
@@ -131,6 +137,7 @@ pub struct CompanionInput {
     #[serde(rename = "finalMethod")]
     final_method: String,
 }
+
 #[derive(Serialize)]
 pub struct CompanionResponse {
     status: u16,

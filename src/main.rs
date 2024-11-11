@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use axum::{routing::post, Router};
+use response_handler::init_environment;
 
 use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
@@ -69,6 +70,7 @@ fn create_tray_icon() -> Box<dyn FnOnce() + 'static> {
 
 #[tokio::main]
 async fn main() {
+    init_environment();
     // TODO fix tray icon, it crashes on mac
     #[cfg(target_os = "windows")]
     let event_loop_function = create_tray_icon();

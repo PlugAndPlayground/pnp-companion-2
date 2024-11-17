@@ -19,7 +19,7 @@ jobs:
       #  run: cargo install cargo-bundle
         
       - name: Build Release
-        run: cargo bundle --release
+        run: cargo build --release
         
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

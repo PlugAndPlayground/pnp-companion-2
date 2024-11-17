@@ -57,5 +57,5 @@ jobs:
 workflows:
   builds:
     jobs:
-      - buildDocker
-      - buildMac
+#      - buildDocker
+#      - buildMac

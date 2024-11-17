@@ -17,7 +17,7 @@ jobs:
       - checkout
       - run: ./rustup-init.exe -y
       #- run: cargo install cargo-bundle
-      - run: cargo bundle --release
+      - run: cargo build --release
       - store_artifacts:
           path: target/release/pnp-companion.exe
           destination: pnp-companion.exe

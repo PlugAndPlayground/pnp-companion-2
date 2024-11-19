@@ -96,7 +96,7 @@ async fn start_server() {
 
     // build our application with a route
     let app = Router::new()
-        .route("/", post(response_handler::pnp_request))
+        .route("/forward", post(response_handler::pnp_request))
         .route("/ping", get(response_handler::ping))
         .layer(CorsLayer::permissive());
 

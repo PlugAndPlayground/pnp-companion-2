@@ -79,7 +79,7 @@ async fn main() {
     #[cfg(target_os = "windows")]
     let event_loop_function = create_tray_icon();
 
-    let server_thread = tokio::task::spawn(start_server());
+    let _server_thread = tokio::task::spawn(start_server());
 
     #[cfg(target_os = "windows")]
     event_loop_function();
@@ -103,7 +103,7 @@ async fn start_server() {
     let addr = SocketAddr::from(([127, 0, 0, 1], PORT));
     tracing::debug!("listening on {}", addr);
 
-    axum::Server::bind(&addr)
+    axum_server::bind(addr)
         .serve(app.into_make_service())
         .await
         .unwrap();

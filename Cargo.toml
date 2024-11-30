@@ -20,20 +20,21 @@ osx_url_schemes = ["com.doe.exampleapplication"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = "0.6.7"
-serde = {version = "1.0.152", features = ["derive"]}
-tracing = "0.1.37"
-tracing-subscriber = "0.3.16"
-tokio = { version = "1.25.0", features = ["full"] }
-tower-http = {version="0.4.0", features = ["cors"]}
-reqwest = "0.11.14"
+axum = "0.7.9"
+serde = {version = "1.0.215", features = ["derive"]}
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
+tokio = { version = "1.41.1", features = ["full"] }
+tower-http = {version="0.6.2", features = ["cors"]}
+reqwest = "0.12.9"
 xml2json-rs = "1.0.1"
-regex = "1.7.3"
-base64 = "0.21.4"
-tray-icon = "0.10.0"
-image = "0.24.7"
-tao = "0.23.0"
+regex = "1.11.1"
+base64 = "0.22.1"
+tray-icon = "0.19.2"
+image = "0.25.5"
+tao = "0.30.8"
 dotenv = "0.15.0"
+axum-server = "0.7.1"
 [build-dependencies]
 winres = "0.1"
-cargo-bundle="0.6.0"
+cargo-bundle="0.6.1"

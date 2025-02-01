@@ -57,19 +57,18 @@ fn replace_variables(input: String) -> String {
     out_string
 }
 
-fn convert_to_json_string(text: String) -> String {
-    let json_builder = JsonBuilder::default();
-    let jsond_xml = json_builder.build_string_from_xml(text.as_str());
-    match jsond_xml {
-        Ok(a) => {
-            // this is a little bit hacky but I don't know why the lib returns an OK that looks like "null"
-            if a.len() > 0 && a != "null" {
-                return a;
-            } else {
-                return text;
-            }
+fn convert_to_json_string(text: String, headers: &HashMap<String, String>) -> String {
+    // Check Content-Type header
+    if let Some(content_type) = headers.get("Content-Type") {
+        if !content_type.to_lowercase().contains("xml") {
+            return text;
         }
-        Err(_) => text,
+    }
+
+    let json_builder = JsonBuilder::default();
+    match json_builder.build_string_from_xml(text.as_str()) {
+        Ok(json) if json.len() > 0 && json != "null" => json,
+        _ => text,
     }
 }
 
@@ -86,7 +85,7 @@ pub async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
     let client = reqwest::Client::new();
 
     let attach_headers = |mut to_send: RequestBuilder| -> RequestBuilder {
-        for (key, value) in received.final_headers {
+        for (key, value) in received.final_headers.clone() {
             to_send = to_send.header(key, replace_variables(value));
         }
         return to_send;
@@ -101,12 +100,7 @@ pub async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
         "Post" => {
             let mut to_send: RequestBuilder = client.post(received.final_url);
             to_send = attach_headers(to_send);
-            Some(
-                to_send
-                    .body(replace_variables(received.final_body))
-                    .send()
-                    .await,
-            )
+            Some(to_send.body(received.final_body).send().await)
         }
         _ => None,
     };
@@ -118,7 +112,7 @@ pub async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
                 status_code = res.status();
                 let payload = res.text().await;
                 match payload {
-                    Ok(text) => convert_to_json_string(text),
+                    Ok(text) => convert_to_json_string(text, &received.final_headers),
                     Err(e) => String::from(e.to_string()),
                 }
             }

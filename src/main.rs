@@ -85,7 +85,7 @@ async fn main() {
     event_loop_function();
 
     #[cfg(not(target_os = "windows"))]
-    server_thread.await.unwrap();
+    _server_thread.await.unwrap();
 
     std::process::exit(0);
 }

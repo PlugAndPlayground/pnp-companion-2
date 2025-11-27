@@ -29,8 +29,8 @@ pub fn init_environment() {
 }
 
 fn replace_variables(input: String) -> String {
-    // first we replace environmental variables
-    let env_variable_regex: Regex = Regex::new(r"\$\{(.+?)\}").unwrap();
+    // first we replace environmental variables using $TM_KEY{VAR_NAME} syntax
+    let env_variable_regex: Regex = Regex::new(r"\$TM_KEY\{(.+?)\}").unwrap();
     let mut out_string = env_variable_regex
         .replace_all(input.as_str(), |caps: &regex::Captures| {
             let key = &caps[1];
@@ -89,7 +89,7 @@ pub async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
             to_send = to_send.header(key, replace_variables(value));
         }
         return to_send;
-    };
+    }; 
 
     let response = match payload.final_method.as_str() {
         "Get" => {

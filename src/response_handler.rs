@@ -6,6 +6,8 @@ use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
+use std::fs;
+use std::path::Path;
 use xml2json_rs::JsonBuilder;
 
 fn get_env_var(key: &str) -> String {
@@ -21,10 +23,19 @@ fn get_env_var(key: &str) -> String {
 
 // Initialize environment at startup
 pub fn init_environment() {
-    // Load .env file if it exists
+    // Create .env file if it doesn't exist
+    let env_path = Path::new(".env");
+    if !env_path.exists() {
+        match fs::File::create(env_path) {
+            Ok(_) => println!("Created .env file"),
+            Err(e) => println!("Failed to create .env file: {}", e),
+        }
+    }
+    
+    // Load .env file
     match dotenv() {
         Ok(_) => println!("Loaded .env file"),
-        Err(e) => println!("No .env file found or error loading it: {}", e),
+        Err(e) => println!("Error loading .env file: {}", e),
     }
 }
 

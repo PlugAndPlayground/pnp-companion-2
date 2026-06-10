@@ -4,4 +4,12 @@ This is a companion executable to go along with plug and playground https://gith
 
 It can read environmental variables or a file ".env" adjacent to the executable, so you can put your API keys there, anything matching the format ${MYVARIABLENAME} in the call from PNP will be replaced.
 
+The local AI assistant reads these optional keys from `.env`:
+
+```text
+ANTHROPIC_API_KEY=
+DEEPSEEK_KEY=
+GEMINI_API_KEY=
+```
+
 Check releases for binaries.

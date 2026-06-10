@@ -11,6 +11,7 @@ use tray_icon::{
     TrayIconBuilder, TrayIconEvent,
 };
 
+mod ai_handler;
 mod response_handler;
 
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
@@ -98,6 +99,10 @@ async fn start_server() {
     let app = Router::new()
         .route("/forward", post(response_handler::pnp_request))
         .route("/ping", get(response_handler::ping))
+        .route("/ai/claude", post(ai_handler::claude))
+        .route("/ai/claude-stream", post(ai_handler::claude_stream))
+        .route("/ai/deepseek", post(ai_handler::deepseek))
+        .route("/ai/gemini", post(ai_handler::gemini))
         .layer(CorsLayer::permissive());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], PORT));

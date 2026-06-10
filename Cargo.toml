@@ -26,7 +26,9 @@ tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 tokio = { version = "1.41.1", features = ["full"] }
 tower-http = {version="0.6.2", features = ["cors"]}
-reqwest = "0.12.9"
+reqwest = { version = "0.12.9", features = ["json", "stream"] }
+serde_json = "1.0"
+futures-util = "0.3"
 xml2json-rs = "1.0.1"
 regex = "1.11.1"
 base64 = "0.22.1"

@@ -24,8 +24,8 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pnp-companion-windows
-          path: target/release/pnp-companion.exe
+          name: tm-companion-windows
+          path: target/release/tm-companion.exe
 
   build-macos:
     runs-on: macos-latest
@@ -47,13 +47,13 @@ jobs:
         run: brew install p7zip
         
       - name: Create Archive
-        run: 7z a pnp-companion-mac.7z target/release/bundle/osx/pnp-companion.app
+        run: 7z a tm-companion-mac.7z target/release/bundle/osx/tm-companion.app
         
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pnp-companion-mac
-          path: pnp-companion-mac.7z
+          name: tm-companion-mac
+          path: tm-companion-mac.7z
 
   build-docker:
     runs-on: ubuntu-latest
@@ -76,5 +76,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pnp-companion-windows-cross
-          path: target/x86_64-pc-windows-gnu/release/pnp-companion.exe
+          name: tm-companion-windows-cross
+          path: target/x86_64-pc-windows-gnu/release/tm-companion.exe

@@ -1,14 +1,14 @@
 [package]
-name = "pnp-companion"
+name = "tm-companion"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
-description = "companion to plugandplayground for handling API communication"
+description = "companion to tailrmade for handling API communication"
 
 [package.metadata.bundle]
-name = "pnp-companion"
-identifier = "pnp-companion"
-icon = ["pnp.png", "pnp-companion.icns"]
+name = "tm-companion"
+identifier = "tm-companion"
+icon = ["tm.png", "tm-companion.icns"]
 version = "1.0.0"
 resources = ["resources"]
 category = "Developer Tool"
@@ -29,6 +29,7 @@ tower-http = {version="0.6.2", features = ["cors"]}
 reqwest = { version = "0.12.9", features = ["json", "stream"] }
 serde_json = "1.0"
 futures-util = "0.3"
+mime_guess = "2.0"
 xml2json-rs = "1.0.1"
 regex = "1.11.1"
 base64 = "0.22.1"
@@ -37,6 +38,7 @@ image = "0.25.5"
 tao = "0.30.8"
 dotenv = "0.15.0"
 axum-server = "0.7.1"
+webbrowser = "1.0"
 [build-dependencies]
 winres = "0.1"
 cargo-bundle="0.6.1"

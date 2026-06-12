@@ -91,7 +91,7 @@ pub async fn ping() -> Response {
     Json(response).into_response()
 }
 
-pub async fn pnp_request(Json(payload): Json<CompanionInput>) -> Response {
+pub async fn tm_request(Json(payload): Json<CompanionInput>) -> Response {
     let received = payload.to_owned();
     let client = reqwest::Client::new();
 

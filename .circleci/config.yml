@@ -19,8 +19,8 @@ jobs:
       #- run: cargo install cargo-bundle
       - run: cargo build --release
       - store_artifacts:
-          path: target/release/pnp-companion.exe
-          destination: pnp-companion.exe
+          path: target/release/tm-companion.exe
+          destination: tm-companion.exe
 
   buildMac:
     macos:
@@ -33,10 +33,10 @@ jobs:
       - run: cargo install cargo-bundle
       - run: cargo bundle --release
       - run: brew install p7zip
-      - run: 7z a pnp-companion-mac.7z target/release/bundle/osx/pnp-companion.app
+      - run: 7z a tm-companion-mac.7z target/release/bundle/osx/tm-companion.app
       - store_artifacts:
-          path: pnp-companion-mac.7z
-          destination: pnp-companion-mac.7z
+          path: tm-companion-mac.7z
+          destination: tm-companion-mac.7z
 
   buildDocker:
     docker:
@@ -48,8 +48,8 @@ jobs:
       - run: apt update && apt install -y mingw-w64
       - run: cargo build --release --target=x86_64-pc-windows-gnu
       - store_artifacts:
-          path: target/x86_64-pc-windows-gnu/release/pnp-companion.exe
-          destination: pnp-companion.exe
+          path: target/x86_64-pc-windows-gnu/release/tm-companion.exe
+          destination: tm-companion.exe
 
 
 # Invoke jobs via workflows

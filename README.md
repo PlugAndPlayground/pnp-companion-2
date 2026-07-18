@@ -7,8 +7,10 @@ The local AI assistant supports these `.env` keys:
 
 ```text
 ANTHROPIC_API_KEY=
-DEEPSEEK_KEY=
+DEEPSEEK_API_KEY=
 GEMINI_API_KEY=
+OPENAI_API_KEY=
+MOONSHOT_API_KEY=
 ```
 
 ## TM Local

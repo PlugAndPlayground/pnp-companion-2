@@ -6,6 +6,7 @@ use axum::{
 };
 use futures_util::StreamExt;
 use reqwest::Client;
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{
     env, io,
@@ -16,7 +17,15 @@ use tracing::{error, info, warn};
 
 const ANTHROPIC_URL: &str = "https://api.anthropic.com/v1/messages";
 const DEEPSEEK_URL: &str = "https://api.deepseek.com/anthropic/v1/messages";
+const OPENAI_URL: &str = "https://api.openai.com/v1/responses";
+const KIMI_URL: &str = "https://api.moonshot.ai/v1/chat/completions";
 static NEXT_REQUEST_ID: AtomicU64 = AtomicU64::new(1);
+
+#[derive(Deserialize)]
+pub struct AIRequest {
+    provider: String,
+    body: Value,
+}
 
 #[derive(Clone, Copy, Default)]
 struct TokenUsage {
@@ -89,6 +98,32 @@ fn gemini_usage(body: &Value) -> TokenUsage {
     }
 }
 
+fn openai_usage(body: &Value) -> TokenUsage {
+    let usage = body.get("usage").unwrap_or(&Value::Null);
+    let cache_read = usage
+        .get("input_tokens_details")
+        .map(|details| json_u64(details, "cached_tokens"))
+        .unwrap_or(0);
+    TokenUsage {
+        input: json_u64(usage, "input_tokens").saturating_sub(cache_read),
+        output: json_u64(usage, "output_tokens"),
+        cache_read,
+        ..Default::default()
+    }
+}
+
+fn kimi_usage(body: &Value) -> TokenUsage {
+    let usage = body.get("usage").unwrap_or(&Value::Null);
+    let cache_read = json_u64(usage, "cached_tokens");
+    TokenUsage {
+        input: json_u64(usage, "prompt_tokens").saturating_sub(cache_read),
+        output: json_u64(usage, "completion_tokens"),
+        cache_read,
+        reported_total: json_u64(usage, "total_tokens"),
+        ..Default::default()
+    }
+}
+
 fn log_completed(
     request_id: u64,
     provider: &str,
@@ -156,6 +191,51 @@ async fn anthropic_request(
         .await
         .unwrap_or_else(|error| json!({ "error": error.to_string() }));
     Ok((status, body))
+}
+
+async fn bearer_provider(
+    payload: Value,
+    provider: &'static str,
+    url: &'static str,
+    key_name: &'static str,
+    usage: fn(&Value) -> TokenUsage,
+) -> Response<Body> {
+    let request_id = next_request_id();
+    let started = Instant::now();
+    let model = model(&payload).to_owned();
+    info!(request_id, provider, model, "AI request received");
+    let key = match api_key(key_name, request_id, provider) {
+        Ok(key) => key,
+        Err(response) => return response,
+    };
+    let response = match Client::new()
+        .post(url)
+        .bearer_auth(key)
+        .json(&payload)
+        .send()
+        .await
+    {
+        Ok(response) => response,
+        Err(error) => return upstream_error(error, request_id, provider),
+    };
+    let status = response.status();
+    let body = response
+        .json::<Value>()
+        .await
+        .unwrap_or_else(|error| json!({ "error": error.to_string() }));
+    if status.is_success() {
+        log_completed(request_id, provider, &model, status, started, usage(&body));
+    } else {
+        warn!(
+            request_id,
+            provider,
+            model,
+            status = status.as_u16(),
+            duration_ms = started.elapsed().as_millis() as u64,
+            "AI provider returned an error response"
+        );
+    }
+    (status, Json(body)).into_response()
 }
 
 fn upstream_error(error: reqwest::Error, request_id: u64, provider: &str) -> Response<Body> {
@@ -241,7 +321,7 @@ pub async fn deepseek(Json(payload): Json<Value>) -> Response<Body> {
 
     match anthropic_request(
         DEEPSEEK_URL,
-        "DEEPSEEK_KEY",
+        "DEEPSEEK_API_KEY",
         payload,
         request_id,
         "deepseek",
@@ -271,6 +351,21 @@ pub async fn deepseek(Json(payload): Json<Value>) -> Response<Body> {
             (status, Json(body)).into_response()
         }
         Err(response) => response,
+    }
+}
+
+pub async fn request(Json(request): Json<AIRequest>) -> Response<Body> {
+    match request.provider.as_str() {
+        "claude" => claude(Json(request.body)).await,
+        "deepseek" => deepseek(Json(request.body)).await,
+        "gemini" => gemini(Json(request.body)).await,
+        "openai" => openai(Json(request.body)).await,
+        "kimi" => kimi(Json(request.body)).await,
+        _ => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Unsupported AI provider" })),
+        )
+            .into_response(),
     }
 }
 
@@ -372,7 +467,7 @@ pub async fn claude_stream(Json(mut payload): Json<Value>) -> Response<Body> {
         .unwrap()
 }
 
-pub async fn gemini(Json(payload): Json<Value>) -> Response<Body> {
+pub async fn gemini(Json(mut payload): Json<Value>) -> Response<Body> {
     let request_id = next_request_id();
     let started = Instant::now();
     let model = model(&payload).to_owned();
@@ -405,10 +500,8 @@ pub async fn gemini(Json(payload): Json<Value>) -> Response<Body> {
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
     );
-    let request_body = json!({
-        "contents": payload.get("contents").cloned().unwrap_or(Value::Array(vec![]))
-    });
-    let response = match Client::new().post(url).json(&request_body).send().await {
+    payload.as_object_mut().map(|body| body.remove("model"));
+    let response = match Client::new().post(url).json(&payload).send().await {
         Ok(response) => response,
         Err(error) => return upstream_error(error, request_id, "gemini"),
     };
@@ -445,6 +538,21 @@ pub async fn gemini(Json(payload): Json<Value>) -> Response<Body> {
         );
         (status, Json(body)).into_response()
     }
+}
+
+pub async fn openai(Json(payload): Json<Value>) -> Response<Body> {
+    bearer_provider(
+        payload,
+        "openai",
+        OPENAI_URL,
+        "OPENAI_API_KEY",
+        openai_usage,
+    )
+    .await
+}
+
+pub async fn kimi(Json(payload): Json<Value>) -> Response<Body> {
+    bearer_provider(payload, "kimi", KIMI_URL, "MOONSHOT_API_KEY", kimi_usage).await
 }
 
 fn collect_stream_usage(buffer: &mut String, usage: &mut TokenUsage) {
@@ -504,6 +612,28 @@ mod tests {
         assert_eq!(usage.output, 25);
         assert_eq!(usage.cache_read, 40);
         assert_eq!(usage.total(), 125);
+    }
+
+    #[test]
+    fn extracts_openai_and_kimi_usage() {
+        let openai = openai_usage(&json!({
+            "usage": {
+                "input_tokens": 100,
+                "output_tokens": 25,
+                "input_tokens_details": { "cached_tokens": 40 }
+            }
+        }));
+        assert_eq!(openai.total(), 125);
+
+        let kimi = kimi_usage(&json!({
+            "usage": {
+                "prompt_tokens": 100,
+                "completion_tokens": 25,
+                "cached_tokens": 40,
+                "total_tokens": 125
+            }
+        }));
+        assert_eq!(kimi.total(), 125);
     }
 
     #[test]

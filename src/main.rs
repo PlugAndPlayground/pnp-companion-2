@@ -133,10 +133,8 @@ async fn start_server(port: u16, frontend: SharedFrontendPackage) {
     let app = Router::new()
         .route("/forward", post(response_handler::tm_request))
         .route("/ping", get(response_handler::ping))
-        .route("/ai/claude", post(ai_handler::claude))
+        .route("/ai/request", post(ai_handler::request))
         .route("/ai/claude-stream", post(ai_handler::claude_stream))
-        .route("/ai/deepseek", post(ai_handler::deepseek))
-        .route("/ai/gemini", post(ai_handler::gemini))
         .fallback(get(frontend_handler::serve))
         .layer(CorsLayer::permissive())
         .with_state(frontend);

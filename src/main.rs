@@ -40,7 +40,7 @@ fn create_tray_icon(port: u16, has_frontend: bool) -> Box<dyn FnOnce() + 'static
         None,
         Some(AboutMetadata {
             name: Some("Tailrmade Companion".to_string()),
-            website: Some("https://tailrmade.dev".to_string()),
+            website: Some("https://tailrmade.app".to_string()),
             ..Default::default()
         }),
     );

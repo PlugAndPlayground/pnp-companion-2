@@ -4,7 +4,6 @@ use axum::{routing::get, routing::post, Router};
 use frontend_handler::SharedFrontendPackage;
 use response_handler::init_environment;
 use std::{net::SocketAddr, sync::Arc};
-use tower_http::cors::CorsLayer;
 use tray_icon::menu::Menu;
 use tray_icon::Icon;
 use tray_icon::{
@@ -14,6 +13,7 @@ use tray_icon::{
 
 mod ai_handler;
 mod frontend_handler;
+mod origin_policy;
 mod response_handler;
 
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
@@ -22,7 +22,7 @@ static ICON: &[u8] = include_bytes!("../resources/tm.png");
 const DEFAULT_PORT: u16 = 6655;
 
 fn tm_url(port: u16) -> String {
-    format!("http://127.0.0.1:{port}")
+    format!("http://localhost:{port}")
 }
 
 fn create_tray_icon(port: u16, has_frontend: bool) -> Box<dyn FnOnce() + 'static> {
@@ -136,7 +136,8 @@ async fn start_server(port: u16, frontend: SharedFrontendPackage) {
         .route("/ai/request", post(ai_handler::request))
         .route("/ai/claude-stream", post(ai_handler::claude_stream))
         .fallback(get(frontend_handler::serve))
-        .layer(CorsLayer::permissive())
+        .layer(origin_policy::cors())
+        .layer(axum::middleware::from_fn(origin_policy::check_origin))
         .with_state(frontend);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));

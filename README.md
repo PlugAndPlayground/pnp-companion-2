@@ -3,6 +3,12 @@
 This is the local companion for Tailrmade. It handles API forwarding, local AI
 provider requests, and optionally serves a Tailrmade frontend.
 
+Browser origins are restricted to the exact hosts `tailrmade.app`,
+`plugandplayground.dev`, `localhost`, and `127.0.0.1` over HTTP or HTTPS, on any port.
+Subdomains and other IP addresses are not allowed. Requests with a disallowed or
+invalid `Origin` receive HTTP 403. Requests without `Origin` remain supported
+for local navigation and non-browser clients; this policy is not authentication.
+
 The local AI assistant supports these `.env` keys:
 
 ```text

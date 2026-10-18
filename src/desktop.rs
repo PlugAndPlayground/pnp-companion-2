@@ -72,18 +72,22 @@ pub fn run() {
             tracing::info!("Log directory: {}", logging::log_dir().display());
 
             let status_item = build_tray(app.handle())?;
-            app.manage(AppState { frontend: frontend.clone(), status_item });
-
-            tauri::async_runtime::spawn_blocking(secrets::prewarm);
-            start_server(app.handle().clone(), frontend.clone());
+            app.manage(AppState {
+                frontend: frontend.clone(),
+                status_item,
+            });
 
             let background = std::env::args().any(|arg| arg == BACKGROUND_ARG);
-            if !background && std::env::var_os("TM_NO_OPEN").is_none() {
-                if frontend.is_some() {
-                    open_tailrmade_url(app.handle());
-                } else if !any_key_configured() {
-                    open_settings(app.handle());
-                }
+            let open_on_launch = !background && std::env::var_os("TM_NO_OPEN").is_none();
+            let open_local_when_ready = open_on_launch && frontend.is_some();
+            start_server(
+                app.handle().clone(),
+                frontend.clone(),
+                open_local_when_ready,
+            );
+
+            if open_on_launch && frontend.is_none() && !any_key_configured() {
+                open_settings(app.handle());
             }
             Ok(())
         })
@@ -93,7 +97,10 @@ pub fn run() {
     app.run(|_app, event| {
         // Closing the settings window must not quit the companion. Explicit
         // exits (Quit menu, restart) carry an exit code and pass through.
-        if let RunEvent::ExitRequested { code: None, api, .. } = event {
+        if let RunEvent::ExitRequested {
+            code: None, api, ..
+        } = event
+        {
             api.prevent_exit();
         }
     });
@@ -118,7 +125,18 @@ fn build_tray(app: &AppHandle) -> tauri::Result<MenuItem<Wry>> {
     let separator = PredefinedMenuItem::separator(app)?;
     let separator2 = PredefinedMenuItem::separator(app)?;
 
-    let menu = Menu::with_items(app, &[&status, &separator, &open, &settings, &logs, &separator2, &quit])?;
+    let menu = Menu::with_items(
+        app,
+        &[
+            &status,
+            &separator,
+            &open,
+            &settings,
+            &logs,
+            &separator2,
+            &quit,
+        ],
+    )?;
 
     let icon = app
         .default_window_icon()
@@ -146,21 +164,24 @@ fn build_tray(app: &AppHandle) -> tauri::Result<MenuItem<Wry>> {
     Ok(status)
 }
 
-fn start_server(app: AppHandle, frontend: frontend_handler::SharedFrontendPackage) {
+fn start_server(
+    app: AppHandle,
+    frontend: frontend_handler::SharedFrontendPackage,
+    open_local_when_ready: bool,
+) {
     let (port, _) = config::port();
-    // Report "running" once the listener is bound, which happens immediately.
-    let reporter = app.clone();
     tauri::async_runtime::spawn(async move {
-        for _ in 0..50 {
-            if !matches!(server::status(), server::Status::Starting) {
-                break;
+        let result = async {
+            let listener = server::bind(port).await?;
+            refresh_tray(&app);
+            if open_local_when_ready {
+                open_tailrmade_url(&app);
             }
-            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            server::serve(listener, port, frontend).await
         }
-        refresh_tray(&reporter);
-    });
-    tauri::async_runtime::spawn(async move {
-        if let Err(error) = server::run(port, frontend).await {
+        .await;
+
+        if let Err(error) = result {
             refresh_tray(&app);
             app.dialog()
                 .message(error)
@@ -217,12 +238,16 @@ pub fn open_settings(app: &AppHandle) {
         let _ = window.set_focus();
         return;
     }
-    match WebviewWindowBuilder::new(app, SETTINGS_WINDOW, WebviewUrl::App("settings.html".into()))
-        .title("Tailrmade Companion")
-        .inner_size(560.0, 720.0)
-        .min_inner_size(420.0, 480.0)
-        .center()
-        .build()
+    match WebviewWindowBuilder::new(
+        app,
+        SETTINGS_WINDOW,
+        WebviewUrl::App("settings.html".into()),
+    )
+    .title("Tailrmade Companion")
+    .inner_size(560.0, 720.0)
+    .min_inner_size(420.0, 480.0)
+    .center()
+    .build()
     {
         Ok(window) => {
             let _ = window.set_focus();
@@ -373,7 +398,11 @@ fn set_port(port: Option<u16>) -> Result<(), String> {
 #[tauri::command]
 fn set_autostart(app: AppHandle, enabled: bool) -> Result<(), String> {
     let launcher = app.autolaunch();
-    let result = if enabled { launcher.enable() } else { launcher.disable() };
+    let result = if enabled {
+        launcher.enable()
+    } else {
+        launcher.disable()
+    };
     result.map_err(|error| error.to_string())
 }
 

@@ -1,5 +1,7 @@
 use crate::{ai_handler, frontend_handler, origin_policy, response_handler};
-use axum::{extract::Request, middleware::Next, response::Response, routing::get, routing::post, Router};
+use axum::{
+    extract::Request, middleware::Next, response::Response, routing::get, routing::post, Router,
+};
 use frontend_handler::SharedFrontendPackage;
 use serde::Serialize;
 use std::{
@@ -59,9 +61,8 @@ async fn log_request(request: Request, next: Next) -> Response {
     response
 }
 
-/// Binds to localhost and serves until the process exits.
-/// Returns an error when the port cannot be bound (usually: already in use).
-pub async fn run(port: u16, frontend: SharedFrontendPackage) -> Result<(), String> {
+/// Binds to localhost and updates the shared status once the listener is ready.
+pub async fn bind(port: u16) -> Result<tokio::net::TcpListener, String> {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let listener = match tokio::net::TcpListener::bind(addr).await {
         Ok(listener) => listener,
@@ -72,15 +73,39 @@ pub async fn run(port: u16, frontend: SharedFrontendPackage) -> Result<(), Strin
                 format!("Could not listen on port {port}: {error}")
             };
             tracing::error!("{error}");
-            set_status(Status::Failed { port, error: error.clone() });
+            set_status(Status::Failed {
+                port,
+                error: error.clone(),
+            });
             return Err(error);
         }
     };
     tracing::info!("Listening on http://{addr}");
     set_status(Status::Running { port });
-    axum::serve(listener, router(frontend)).await.map_err(|error| {
-        let error = error.to_string();
-        set_status(Status::Failed { port, error: error.clone() });
-        error
-    })
+    Ok(listener)
+}
+
+/// Serves an already-bound listener until the process exits.
+pub async fn serve(
+    listener: tokio::net::TcpListener,
+    port: u16,
+    frontend: SharedFrontendPackage,
+) -> Result<(), String> {
+    axum::serve(listener, router(frontend))
+        .await
+        .map_err(|error| {
+            let error = error.to_string();
+            set_status(Status::Failed {
+                port,
+                error: error.clone(),
+            });
+            error
+        })
+}
+
+/// Binds to localhost and serves until the process exits.
+/// Returns an error when the port cannot be bound (usually: already in use).
+pub async fn run(port: u16, frontend: SharedFrontendPackage) -> Result<(), String> {
+    let listener = bind(port).await?;
+    serve(listener, port, frontend).await
 }

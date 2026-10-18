@@ -32,7 +32,7 @@ fn replace_variables(input: String) -> String {
         let function_regex: Regex = Regex::new(&function_reg_string).unwrap();
 
         out_string = function_regex
-            .replace_all(&out_string.as_str(), |caps: &regex::Captures| {
+            .replace_all(out_string.as_str(), |caps: &regex::Captures| {
                 let key = &caps[1];
                 func(key)
             })
@@ -52,7 +52,7 @@ fn convert_to_json_string(text: String, headers: &HashMap<String, String>) -> St
 
     let json_builder = JsonBuilder::default();
     match json_builder.build_string_from_xml(text.as_str()) {
-        Ok(json) if json.len() > 0 && json != "null" => json,
+        Ok(json) if !json.is_empty() && json != "null" => json,
         _ => text,
     }
 }
@@ -73,8 +73,8 @@ pub async fn tm_request(Json(payload): Json<CompanionInput>) -> Response {
         for (key, value) in received.final_headers.clone() {
             to_send = to_send.header(key, replace_variables(value));
         }
-        return to_send;
-    }; 
+        to_send
+    };
 
     let response = match payload.final_method.as_str() {
         "Get" => {
@@ -107,7 +107,7 @@ pub async fn tm_request(Json(payload): Json<CompanionInput>) -> Response {
                 let payload = res.text().await;
                 match payload {
                     Ok(text) => convert_to_json_string(text, &received.final_headers),
-                    Err(e) => String::from(e.to_string()),
+                    Err(e) => e.to_string(),
                 }
             }
             Err(e) => {
@@ -123,7 +123,10 @@ pub async fn tm_request(Json(payload): Json<CompanionInput>) -> Response {
             }
         },
         None => {
-            tracing::warn!(method = payload.final_method, "Forward rejected: unsupported method");
+            tracing::warn!(
+                method = payload.final_method,
+                "Forward rejected: unsupported method"
+            );
             String::from("{\"Response\":\"Invalid method thinks companion\"}")
         }
     };

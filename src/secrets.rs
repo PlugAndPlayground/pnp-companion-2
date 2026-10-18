@@ -15,7 +15,7 @@ use serde::Serialize;
 use std::{
     collections::HashMap,
     path::PathBuf,
-    sync::{OnceLock, RwLock},
+    sync::{Mutex, OnceLock, RwLock},
 };
 
 const KEYCHAIN_SERVICE: &str = "app.tailrmade.companion";
@@ -26,11 +26,26 @@ pub struct KnownKey {
 }
 
 pub const KNOWN_KEYS: &[KnownKey] = &[
-    KnownKey { name: "ANTHROPIC_API_KEY", label: "Anthropic (Claude)" },
-    KnownKey { name: "OPENAI_API_KEY", label: "OpenAI" },
-    KnownKey { name: "GEMINI_API_KEY", label: "Google Gemini" },
-    KnownKey { name: "DEEPSEEK_API_KEY", label: "DeepSeek" },
-    KnownKey { name: "MOONSHOT_API_KEY", label: "Moonshot (Kimi)" },
+    KnownKey {
+        name: "ANTHROPIC_API_KEY",
+        label: "Anthropic (Claude)",
+    },
+    KnownKey {
+        name: "OPENAI_API_KEY",
+        label: "OpenAI",
+    },
+    KnownKey {
+        name: "GEMINI_API_KEY",
+        label: "Google Gemini",
+    },
+    KnownKey {
+        name: "DEEPSEEK_API_KEY",
+        label: "DeepSeek",
+    },
+    KnownKey {
+        name: "MOONSHOT_API_KEY",
+        label: "Moonshot (Kimi)",
+    },
 ];
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -55,6 +70,9 @@ struct Store {
 }
 
 static STORE: OnceLock<RwLock<Store>> = OnceLock::new();
+/// Keychain calls can display an OS authorization dialog. Keep them serialized
+/// so concurrent startup/settings lookups cannot create duplicate prompts.
+static KEYCHAIN_ACCESS: Mutex<()> = Mutex::new(());
 
 fn store() -> &'static RwLock<Store> {
     STORE.get_or_init(|| {
@@ -67,7 +85,10 @@ fn store() -> &'static RwLock<Store> {
 
 fn env_file_candidates() -> Vec<PathBuf> {
     let mut paths = vec![config::env_file_path()];
-    if let Some(dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(PathBuf::from)) {
+    if let Some(dir) = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(PathBuf::from))
+    {
         paths.push(dir.join(".env"));
     }
     if let Ok(dir) = std::env::current_dir() {
@@ -97,12 +118,11 @@ fn read_env_files() -> Vec<EnvFile> {
         .collect()
 }
 
-/// Re-reads `.env` files and forgets cached keychain lookups.
+/// Re-reads `.env` files. Keychain lookups remain cached for this process so a
+/// settings refresh does not repeatedly ask the OS to authorize the same app.
 pub fn reload() {
     let mut store = store().write().unwrap();
     store.env_files = read_env_files();
-    store.keychain.clear();
-    store.keychain_error = None;
 }
 
 fn entry(name: &str) -> keyring::Result<keyring::Entry> {
@@ -113,13 +133,22 @@ fn keychain_get(name: &str) -> Option<String> {
     if let Some(cached) = store().read().unwrap().keychain.get(name) {
         return cached.clone();
     }
+
+    let _access = KEYCHAIN_ACCESS.lock().unwrap();
+    // Another lookup may have populated the cache while this thread waited.
+    if let Some(cached) = store().read().unwrap().keychain.get(name) {
+        return cached.clone();
+    }
+
     let result = entry(name).and_then(|e| e.get_password());
     let mut store = store().write().unwrap();
     let value = match result {
         Ok(value) => Some(value),
         Err(keyring::Error::NoEntry) => None,
         Err(error) => {
-            store.keychain_error.get_or_insert_with(|| error.to_string());
+            store
+                .keychain_error
+                .get_or_insert_with(|| error.to_string());
             // Do not cache failures, the keychain may become available later.
             return None;
         }
@@ -148,7 +177,9 @@ pub fn lookup(name: &str) -> Option<(String, Source)> {
         file.values.get(name).map(|value| {
             (
                 value.clone(),
-                Source::EnvFile { path: file.path.display().to_string() },
+                Source::EnvFile {
+                    path: file.path.display().to_string(),
+                },
             )
         })
     })
@@ -174,6 +205,7 @@ pub fn set(name: &str, value: &str) -> Result<(), String> {
     if value.is_empty() {
         return Err("Value is empty".into());
     }
+    let _access = KEYCHAIN_ACCESS.lock().unwrap();
     entry(name)
         .and_then(|e| e.set_password(value))
         .map_err(|error| format!("Could not save to the system keychain: {error}"))?;
@@ -186,11 +218,20 @@ pub fn set(name: &str, value: &str) -> Result<(), String> {
 }
 
 pub fn delete(name: &str) -> Result<(), String> {
+    let _access = KEYCHAIN_ACCESS.lock().unwrap();
     match entry(name).and_then(|e| e.delete_credential()) {
         Ok(()) | Err(keyring::Error::NoEntry) => {}
-        Err(error) => return Err(format!("Could not remove from the system keychain: {error}")),
+        Err(error) => {
+            return Err(format!(
+                "Could not remove from the system keychain: {error}"
+            ))
+        }
     }
-    store().write().unwrap().keychain.insert(name.to_string(), None);
+    store()
+        .write()
+        .unwrap()
+        .keychain
+        .insert(name.to_string(), None);
     Ok(())
 }
 
@@ -206,15 +247,6 @@ pub fn mask(value: &str) -> String {
     }
     let tail: String = chars[chars.len() - 4..].iter().collect();
     format!("••••{tail}")
-}
-
-/// Reads all keys once so the first AI request does not wait on the keychain.
-pub fn prewarm() {
-    let mut names: Vec<String> = KNOWN_KEYS.iter().map(|k| k.name.to_string()).collect();
-    names.extend(config::get().custom_key_names);
-    for name in names {
-        let _ = keychain_get(&name);
-    }
 }
 
 #[cfg(test)]

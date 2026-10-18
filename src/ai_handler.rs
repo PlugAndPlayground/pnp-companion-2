@@ -147,7 +147,7 @@ fn log_completed(
     );
 }
 
-fn api_key(name: &str, request_id: u64, provider: &str) -> Result<String, Response<Body>> {
+fn api_key(name: &str, request_id: u64, provider: &str) -> Result<String, Box<Response<Body>>> {
     crate::secrets::get(name)
         .filter(|key| !key.trim().is_empty())
         .ok_or_else(|| {
@@ -157,13 +157,13 @@ fn api_key(name: &str, request_id: u64, provider: &str) -> Result<String, Respon
                 environment_variable = name,
                 "AI request rejected because provider credentials are missing"
             );
-            (
+            Box::new((
                 StatusCode::SERVICE_UNAVAILABLE,
                 Json(json!({
                     "error": format!("{name} is not configured. Add it in Tailrmade Companion settings.")
                 })),
             )
-                .into_response()
+                .into_response())
         })
 }
 
@@ -173,7 +173,7 @@ async fn anthropic_request(
     payload: Value,
     request_id: u64,
     provider: &str,
-) -> Result<(StatusCode, Value), Response<Body>> {
+) -> Result<(StatusCode, Value), Box<Response<Body>>> {
     let key = api_key(key_name, request_id, provider)?;
     let response = Client::new()
         .post(url)
@@ -205,7 +205,7 @@ async fn bearer_provider(
     info!(request_id, provider, model, "AI request received");
     let key = match api_key(key_name, request_id, provider) {
         Ok(key) => key,
-        Err(response) => return response,
+        Err(response) => return *response,
     };
     let response = match Client::new()
         .post(url)
@@ -304,7 +304,7 @@ pub async fn claude(Json(payload): Json<Value>) -> Response<Body> {
             );
             (status, Json(body)).into_response()
         }
-        Err(response) => response,
+        Err(response) => *response,
     }
 }
 
@@ -350,7 +350,7 @@ pub async fn deepseek(Json(payload): Json<Value>) -> Response<Body> {
             }
             (status, Json(body)).into_response()
         }
-        Err(response) => response,
+        Err(response) => *response,
     }
 }
 
@@ -383,7 +383,7 @@ pub async fn claude_stream(Json(mut payload): Json<Value>) -> Response<Body> {
 
     let key = match api_key("ANTHROPIC_API_KEY", request_id, "anthropic") {
         Ok(key) => key,
-        Err(response) => return response,
+        Err(response) => return *response,
     };
     payload["stream"] = Value::Bool(true);
 
@@ -480,7 +480,7 @@ pub async fn gemini(Json(mut payload): Json<Value>) -> Response<Body> {
 
     let key = match api_key("GEMINI_API_KEY", request_id, "gemini") {
         Ok(key) => key,
-        Err(response) => return response,
+        Err(response) => return *response,
     };
     let model = match payload.get("model").and_then(Value::as_str) {
         Some(model) => model.to_owned(),
@@ -499,9 +499,8 @@ pub async fn gemini(Json(mut payload): Json<Value>) -> Response<Body> {
     };
     // The key goes in a header, never the query string: reqwest errors include
     // the request URL, and those end up in logs and error responses.
-    let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-    );
+    let url =
+        format!("https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent");
     payload.as_object_mut().map(|body| body.remove("model"));
     let response = match Client::new()
         .post(url)

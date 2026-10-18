@@ -31,7 +31,6 @@ fn main() {
 fn run_headless() {
     let runtime = tokio::runtime::Runtime::new().expect("tokio runtime");
     runtime.block_on(async {
-        tokio::task::spawn_blocking(secrets::prewarm);
         let frontend = Arc::new(frontend_handler::FrontendPackage::discover(None));
         match frontend.as_ref() {
             Some(package) => tracing::info!("Serving {}", package.description()),

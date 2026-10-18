@@ -15,6 +15,7 @@ use tauri_plugin_opener::OpenerExt;
 const TRAY_ID: &str = "main";
 const SETTINGS_WINDOW: &str = "settings";
 const BACKGROUND_ARG: &str = "--background";
+const HOSTED_URL: &str = "https://tailrmade.app";
 
 /// Updater public key, provided at build time by CI. Without it the updater
 /// is left out and the settings window hides the update button.
@@ -67,7 +68,7 @@ pub fn run() {
             }
             tracing::info!("Config directory: {}", config::config_dir().display());
 
-            let status_item = build_tray(app.handle(), frontend.is_some())?;
+            let status_item = build_tray(app.handle())?;
             app.manage(AppState { frontend: frontend.clone(), status_item });
 
             tauri::async_runtime::spawn_blocking(secrets::prewarm);
@@ -105,7 +106,7 @@ fn any_key_configured() -> bool {
         .any(|key| secrets::lookup(key.name).is_some())
 }
 
-fn build_tray(app: &AppHandle, has_frontend: bool) -> tauri::Result<MenuItem<Wry>> {
+fn build_tray(app: &AppHandle) -> tauri::Result<MenuItem<Wry>> {
     let status = MenuItem::with_id(app, "status", "Starting…", false, None::<&str>)?;
     let open = MenuItem::with_id(app, "open", "Open Tailrmade", true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
@@ -113,11 +114,7 @@ fn build_tray(app: &AppHandle, has_frontend: bool) -> tauri::Result<MenuItem<Wry
     let separator = PredefinedMenuItem::separator(app)?;
     let separator2 = PredefinedMenuItem::separator(app)?;
 
-    let menu = if has_frontend {
-        Menu::with_items(app, &[&status, &separator, &open, &settings, &separator2, &quit])?
-    } else {
-        Menu::with_items(app, &[&status, &separator, &settings, &separator2, &quit])?
-    };
+    let menu = Menu::with_items(app, &[&status, &separator, &open, &settings, &separator2, &quit])?;
 
     let icon = app
         .default_window_icon()
@@ -185,7 +182,14 @@ fn refresh_tray(app: &AppHandle) {
     }
 }
 
-fn tailrmade_url() -> String {
+/// The locally served Tailrmade when a package is bundled, the hosted app otherwise.
+fn tailrmade_url(app: &AppHandle) -> String {
+    let local = app
+        .try_state::<AppState>()
+        .is_some_and(|state| state.frontend.is_some());
+    if !local {
+        return HOSTED_URL.to_string();
+    }
     let port = match server::status() {
         server::Status::Running { port } => port,
         _ => config::port().0,
@@ -194,7 +198,7 @@ fn tailrmade_url() -> String {
 }
 
 fn open_tailrmade_url(app: &AppHandle) {
-    let _ = app.opener().open_url(tailrmade_url(), None::<&str>);
+    let _ = app.opener().open_url(tailrmade_url(app), None::<&str>);
 }
 
 pub fn open_settings(app: &AppHandle) {

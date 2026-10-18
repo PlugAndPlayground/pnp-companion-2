@@ -116,7 +116,6 @@ async function load() {
   $("version").textContent = `Version ${state.version}`;
   renderStatus(state);
   $("restart-banner").hidden = !state.restartNeeded;
-  $("open-tm").hidden = !state.frontend;
 
   const keychain = $("keychain-error");
   if (state.keychainError) {

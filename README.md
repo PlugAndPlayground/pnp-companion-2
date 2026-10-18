@@ -78,7 +78,7 @@ not authentication. The server only listens on `127.0.0.1`.
 
 ## Development
 
-Requirements: Rust (stable), Node 22, and on Linux:
+Requirements: Rust (stable), Node 24, and on Linux:
 
 ```bash
 sudo apt-get install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev libxdo-dev

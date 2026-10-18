@@ -150,6 +150,9 @@ async function load() {
 
   $("config-dir").textContent = state.configDir;
   $("config-dir").title = state.configDir;
+  $("log-dir").textContent = state.logDir;
+  $("log-dir").title = state.logDir;
+  $("verbose-logging").checked = state.verboseLogging;
   $("frontend").textContent = state.frontend ? `Serving Tailrmade from ${state.frontend}` : "";
   $("frontend").hidden = !state.frontend;
 
@@ -184,8 +187,17 @@ $("autostart").addEventListener("change", async (event) => {
   }
 });
 
+$("verbose-logging").addEventListener("change", async (event) => {
+  try {
+    await call("set_verbose_logging", { enabled: event.target.checked });
+  } finally {
+    load();
+  }
+});
+
 $("restart").addEventListener("click", () => call("restart"));
 $("open-config").addEventListener("click", () => call("open_config_dir"));
+$("open-logs").addEventListener("click", () => call("open_logs_dir"));
 $("open-tm").addEventListener("click", () => call("open_tailrmade"));
 
 let pendingVersion = null;

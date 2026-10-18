@@ -90,20 +90,42 @@ pub async fn tm_request(Json(payload): Json<CompanionInput>) -> Response {
         _ => None,
     };
 
+    let host = reqwest::Url::parse(&payload.final_url)
+        .ok()
+        .and_then(|url| url.host_str().map(str::to_owned));
     let mut status_code = StatusCode::IM_A_TEAPOT;
     let return_string = match response {
         Some(res) => match res {
             Ok(res) => {
                 status_code = res.status();
+                tracing::debug!(
+                    method = payload.final_method,
+                    host,
+                    status = status_code.as_u16(),
+                    "Forwarded request"
+                );
                 let payload = res.text().await;
                 match payload {
                     Ok(text) => convert_to_json_string(text, &received.final_headers),
                     Err(e) => String::from(e.to_string()),
                 }
             }
-            Err(e) => String::from(e.to_string()),
+            Err(e) => {
+                // The caller sent this URL, so it may see it; the log may not.
+                let message = e.to_string();
+                tracing::warn!(
+                    method = payload.final_method,
+                    host,
+                    error = %e.without_url(),
+                    "Forwarded request failed"
+                );
+                message
+            }
         },
-        None => String::from("{\"Response\":\"Invalid method thinks companion\"}"),
+        None => {
+            tracing::warn!(method = payload.final_method, "Forward rejected: unsupported method");
+            String::from("{\"Response\":\"Invalid method thinks companion\"}")
+        }
     };
 
     let response = CompanionResponse {

@@ -4,6 +4,7 @@ mod ai_handler;
 mod config;
 mod desktop;
 mod frontend_handler;
+mod logging;
 mod origin_policy;
 mod response_handler;
 mod secrets;
@@ -12,10 +13,9 @@ mod server;
 use std::sync::Arc;
 
 fn main() {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .init();
+    logging::init();
     config::init();
+    logging::set_verbose(config::get().verbose_logging);
 
     let headless = std::env::args().any(|arg| arg == "--headless")
         || std::env::var_os("TM_HEADLESS").is_some();

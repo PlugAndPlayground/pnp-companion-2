@@ -37,6 +37,7 @@ pub async fn check_origin(request: Request, next: Next) -> Result<Response, Stat
     let mut origins = request.headers().get_all(ORIGIN).iter();
     if let Some(origin) = origins.next() {
         if !is_allowed_origin(origin) || origins.next().is_some() {
+            tracing::warn!(?origin, path = request.uri().path(), "Rejected request from disallowed origin");
             return Err(StatusCode::FORBIDDEN);
         }
     }

@@ -1,10 +1,11 @@
 use crate::{ai_handler, frontend_handler, origin_policy, response_handler};
-use axum::{routing::get, routing::post, Router};
+use axum::{extract::Request, middleware::Next, response::Response, routing::get, routing::post, Router};
 use frontend_handler::SharedFrontendPackage;
 use serde::Serialize;
 use std::{
     net::SocketAddr,
     sync::{OnceLock, RwLock},
+    time::Instant,
 };
 
 #[derive(Clone, Debug, Serialize)]
@@ -38,7 +39,24 @@ pub fn router(frontend: SharedFrontendPackage) -> Router {
         .fallback(get(frontend_handler::serve))
         .layer(origin_policy::cors())
         .layer(axum::middleware::from_fn(origin_policy::check_origin))
+        .layer(axum::middleware::from_fn(log_request))
         .with_state(frontend)
+}
+
+/// Logs method, path and status only; query strings may carry user data.
+async fn log_request(request: Request, next: Next) -> Response {
+    let method = request.method().clone();
+    let path = request.uri().path().to_owned();
+    let started = Instant::now();
+    let response = next.run(request).await;
+    tracing::debug!(
+        %method,
+        path,
+        status = response.status().as_u16(),
+        duration_ms = started.elapsed().as_millis() as u64,
+        "HTTP request"
+    );
+    response
 }
 
 /// Binds to localhost and serves until the process exits.

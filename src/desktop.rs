@@ -1,6 +1,6 @@
 //! Desktop shell: tray icon, settings window, autostart and updates.
 
-use crate::{config, frontend_handler, secrets, server};
+use crate::{config, frontend_handler, logging, secrets, server};
 use serde::Serialize;
 use std::sync::Arc;
 use tauri::{
@@ -51,6 +51,8 @@ pub fn run() {
             set_port,
             set_autostart,
             open_config_dir,
+            set_verbose_logging,
+            open_logs_dir,
             open_tailrmade,
             restart,
             check_update,
@@ -67,6 +69,7 @@ pub fn run() {
                 None => tracing::info!("No TM package found; running companion-only mode"),
             }
             tracing::info!("Config directory: {}", config::config_dir().display());
+            tracing::info!("Log directory: {}", logging::log_dir().display());
 
             let status_item = build_tray(app.handle())?;
             app.manage(AppState { frontend: frontend.clone(), status_item });
@@ -110,11 +113,12 @@ fn build_tray(app: &AppHandle) -> tauri::Result<MenuItem<Wry>> {
     let status = MenuItem::with_id(app, "status", "Starting…", false, None::<&str>)?;
     let open = MenuItem::with_id(app, "open", "Open Tailrmade", true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
+    let logs = MenuItem::with_id(app, "logs", "Open Logs Folder", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit Tailrmade Companion", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let separator2 = PredefinedMenuItem::separator(app)?;
 
-    let menu = Menu::with_items(app, &[&status, &separator, &open, &settings, &separator2, &quit])?;
+    let menu = Menu::with_items(app, &[&status, &separator, &open, &settings, &logs, &separator2, &quit])?;
 
     let icon = app
         .default_window_icon()
@@ -129,6 +133,11 @@ fn build_tray(app: &AppHandle) -> tauri::Result<MenuItem<Wry>> {
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => open_tailrmade_url(app),
             "settings" => open_settings(app),
+            "logs" => {
+                if let Err(error) = open_dir(app, logging::log_dir()) {
+                    tracing::error!(%error, "Could not open logs folder");
+                }
+            }
             "quit" => app.exit(0),
             _ => {}
         })
@@ -246,6 +255,8 @@ struct SettingsState {
     restart_needed: bool,
     config_dir: String,
     env_file: String,
+    log_dir: String,
+    verbose_logging: bool,
     frontend: Option<String>,
     autostart: bool,
     updater_enabled: bool,
@@ -303,6 +314,8 @@ async fn get_settings(app: AppHandle) -> Result<SettingsState, String> {
         restart_needed,
         config_dir: config::config_dir().display().to_string(),
         env_file: config::env_file_path().display().to_string(),
+        log_dir: logging::log_dir().display().to_string(),
+        verbose_logging: config::get().verbose_logging,
         frontend: state
             .frontend
             .as_ref()
@@ -364,13 +377,29 @@ fn set_autostart(app: AppHandle, enabled: bool) -> Result<(), String> {
     result.map_err(|error| error.to_string())
 }
 
-#[tauri::command]
-fn open_config_dir(app: AppHandle) -> Result<(), String> {
-    let dir = config::config_dir();
+fn open_dir(app: &AppHandle, dir: std::path::PathBuf) -> Result<(), String> {
     std::fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
     app.opener()
         .open_path(dir.display().to_string(), None::<&str>)
         .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn open_config_dir(app: AppHandle) -> Result<(), String> {
+    open_dir(&app, config::config_dir())
+}
+
+#[tauri::command]
+fn open_logs_dir(app: AppHandle) -> Result<(), String> {
+    open_dir(&app, logging::log_dir())
+}
+
+#[tauri::command]
+fn set_verbose_logging(enabled: bool) -> Result<(), String> {
+    config::update(|config| config.verbose_logging = enabled).map_err(|error| error.to_string())?;
+    logging::set_verbose(enabled);
+    tracing::info!(enabled, "Verbose logging changed");
+    Ok(())
 }
 
 #[tauri::command]

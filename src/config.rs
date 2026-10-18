@@ -6,7 +6,8 @@
 //! - Linux:   ~/.config/tailrmade
 //!
 //! `TM_CONFIG_DIR` overrides the location. The directory holds `config.json`
-//! (non-secret settings) and an optional `.env` fallback for API keys.
+//! (non-secret settings), an optional `.env` fallback for API keys and the
+//! `logs` folder.
 
 use serde::{Deserialize, Serialize};
 use std::{
@@ -26,6 +27,8 @@ pub struct Config {
     /// Names of custom keys saved through the settings window, so they can be
     /// listed again (the keychain cannot enumerate entries).
     pub custom_key_names: Vec<String>,
+    /// Log the companion's DEBUG events too.
+    pub verbose_logging: bool,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]

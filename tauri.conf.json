@@ -1,0 +1,51 @@
+{
+  "$schema": "./node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Tailrmade Companion",
+  "mainBinaryName": "tm-companion",
+  "identifier": "app.tailrmade.companion",
+  "build": {
+    "frontendDist": "ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "DeveloperTool",
+    "shortDescription": "Local companion for Tailrmade",
+    "longDescription": "Forwards API calls for Tailrmade, runs AI requests with your own keys, and can serve Tailrmade locally.",
+    "publisher": "Tailrmade",
+    "homepage": "https://tailrmade.app",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/PlugAndPlayground/pnp-companion-2/releases/latest/download/latest.json"
+      ],
+      "pubkey": "set at build time via TM_UPDATER_PUBKEY",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

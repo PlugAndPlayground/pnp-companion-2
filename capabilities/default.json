@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Settings window: core APIs only. App commands are defined in Rust.",
+  "windows": ["settings"],
+  "permissions": ["core:default"]
+}

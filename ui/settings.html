@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tailrmade Companion</title>
+  <link rel="stylesheet" href="settings.css">
+  <script src="settings.js" defer></script>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Tailrmade Companion</h1>
+      <p class="muted" id="version"></p>
+    </div>
+    <span class="pill" id="status">Loading…</span>
+  </header>
+
+  <div class="banner" id="restart-banner" hidden>
+    <span>The port changed. Restart the companion to apply it.</span>
+    <button id="restart">Restart</button>
+  </div>
+
+  <div class="banner error" id="server-error" hidden></div>
+
+  <section>
+    <div class="section-head">
+      <h2>API keys</h2>
+      <button class="link" id="open-tm" hidden>Open Tailrmade</button>
+    </div>
+    <p class="muted">Keys are stored in your system keychain and only sent to the matching provider.</p>
+    <div class="banner warn" id="keychain-error" hidden></div>
+    <ul class="keys" id="known-keys"></ul>
+
+    <h3>Custom keys</h3>
+    <p class="muted">Available to HTTP nodes as <code>$TM_KEY{NAME}</code>.</p>
+    <ul class="keys" id="custom-keys"></ul>
+    <form class="row" id="add-custom">
+      <input id="custom-name" placeholder="NAME" autocomplete="off" spellcheck="false" pattern="[A-Za-z0-9_]{1,64}" required>
+      <input id="custom-value" type="password" placeholder="Value" autocomplete="off" required>
+      <button type="submit">Add</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>General</h2>
+    <label class="check">
+      <input type="checkbox" id="autostart">
+      <span>Start at login</span>
+    </label>
+    <form class="row" id="port-form">
+      <label for="port">Port</label>
+      <input id="port" type="number" min="1024" max="65535" placeholder="6655">
+      <button type="submit">Save</button>
+    </form>
+    <p class="muted" id="port-note"></p>
+  </section>
+
+  <section>
+    <h2>Storage</h2>
+    <p class="muted">Settings and the fallback <code>.env</code> file live in:</p>
+    <div class="row">
+      <code class="path" id="config-dir"></code>
+      <button id="open-config">Open folder</button>
+    </div>
+    <p class="muted" id="frontend"></p>
+  </section>
+
+  <section>
+    <h2>Updates</h2>
+    <div class="row">
+      <button id="check-update">Check for updates</button>
+      <span class="muted" id="update-status"></span>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>

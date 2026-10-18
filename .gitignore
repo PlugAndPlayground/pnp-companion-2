@@ -2,3 +2,5 @@
 /artifacts
 /tm
 /.env
+node_modules
+/gen

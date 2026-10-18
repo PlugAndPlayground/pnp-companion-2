@@ -16,7 +16,9 @@ pub struct FrontendPackage {
 }
 
 impl FrontendPackage {
-    pub fn discover() -> Option<Self> {
+    /// Looks for a TM build in `TM_DIST_DIR`, then `tm/` next to the
+    /// executable, then the bundled resource directory (TM Local installers).
+    pub fn discover(bundled: Option<PathBuf>) -> Option<Self> {
         let configured_path = env::var_os("TM_DIST_DIR").map(PathBuf::from);
         let adjacent_path = env::current_exe()
             .ok()
@@ -25,7 +27,12 @@ impl FrontendPackage {
         configured_path
             .into_iter()
             .chain(adjacent_path)
+            .chain(bundled)
             .find_map(Self::from_path)
+    }
+
+    pub fn root(&self) -> &Path {
+        &self.root
     }
 
     fn from_path(root: PathBuf) -> Option<Self> {

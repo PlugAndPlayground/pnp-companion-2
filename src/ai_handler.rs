@@ -9,7 +9,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{
-    env, io,
+    io,
     sync::atomic::{AtomicU64, Ordering},
     time::Instant,
 };
@@ -148,8 +148,7 @@ fn log_completed(
 }
 
 fn api_key(name: &str, request_id: u64, provider: &str) -> Result<String, Response<Body>> {
-    env::var(name)
-        .ok()
+    crate::secrets::get(name)
         .filter(|key| !key.trim().is_empty())
         .ok_or_else(|| {
             warn!(
@@ -161,7 +160,7 @@ fn api_key(name: &str, request_id: u64, provider: &str) -> Result<String, Respon
             (
                 StatusCode::SERVICE_UNAVAILABLE,
                 Json(json!({
-                    "error": format!("{name} is not configured in the companion .env file")
+                    "error": format!("{name} is not configured. Add it in Tailrmade Companion settings.")
                 })),
             )
                 .into_response()

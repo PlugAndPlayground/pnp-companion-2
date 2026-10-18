@@ -1,42 +1,16 @@
 use axum::{response::IntoResponse, response::Response, Json};
 use base64::{engine::general_purpose, Engine as _};
-use dotenv::dotenv;
 use regex::Regex;
 use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::env;
-use std::fs;
-use std::path::Path;
 use xml2json_rs::JsonBuilder;
 
 fn get_env_var(key: &str) -> String {
-    // First try to get from .env file (loaded into env vars by dotenv)
-    match env::var(key) {
-        Ok(value) => value,
-        Err(e) => {
-            println!("Couldn't read environment variable {}: {}", key, e);
-            String::from("UNKNOWN_ENV_VARIABLE")
-        }
-    }
-}
-
-// Initialize environment at startup
-pub fn init_environment() {
-    // Create .env file if it doesn't exist
-    let env_path = Path::new(".env");
-    if !env_path.exists() {
-        match fs::File::create(env_path) {
-            Ok(_) => println!("Created .env file"),
-            Err(e) => println!("Failed to create .env file: {}", e),
-        }
-    }
-    
-    // Load .env file
-    match dotenv() {
-        Ok(_) => println!("Loaded .env file"),
-        Err(e) => println!("Error loading .env file: {}", e),
-    }
+    crate::secrets::get(key).unwrap_or_else(|| {
+        tracing::warn!(key, "Key referenced by $TM_KEY is not configured");
+        String::from("UNKNOWN_ENV_VARIABLE")
+    })
 }
 
 fn replace_variables(input: String) -> String {

@@ -238,6 +238,7 @@ async fn bearer_provider(
 }
 
 fn upstream_error(error: reqwest::Error, request_id: u64, provider: &str) -> Response<Body> {
+    let error = error.without_url();
     error!(
         request_id,
         provider,
@@ -496,11 +497,19 @@ pub async fn gemini(Json(mut payload): Json<Value>) -> Response<Body> {
                 .into_response();
         }
     };
+    // The key goes in a header, never the query string: reqwest errors include
+    // the request URL, and those end up in logs and error responses.
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+        "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     );
     payload.as_object_mut().map(|body| body.remove("model"));
-    let response = match Client::new().post(url).json(&payload).send().await {
+    let response = match Client::new()
+        .post(url)
+        .header("x-goog-api-key", key)
+        .json(&payload)
+        .send()
+        .await
+    {
         Ok(response) => response,
         Err(error) => return upstream_error(error, request_id, "gemini"),
     };

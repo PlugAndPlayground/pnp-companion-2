@@ -1,0 +1,147 @@
+name: Build
+
+# Every push and PR builds installers for macOS, Windows and Linux.
+# Pushing a tag like v0.2.0 also creates a draft GitHub Release with them.
+#
+# Signing is opt-in: each step below only switches on when its secrets exist.
+#   macOS (Developer ID + notarization), secrets:
+#     APPLE_CERTIFICATE            base64 of the Developer ID Application .p12
+#     APPLE_CERTIFICATE_PASSWORD   password of that .p12
+#     APPLE_SIGNING_IDENTITY       e.g. "Developer ID Application: Name (TEAMID)"
+#     APPLE_ID, APPLE_PASSWORD     Apple ID and an app-specific password
+#     APPLE_TEAM_ID
+#   Updater, secrets + variable:
+#     TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD (secrets)
+#     TM_UPDATER_PUBKEY (repository variable, the matching public key)
+#   Windows: not wired yet, see README "Windows signing".
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev libxdo-dev
+      - run: cargo test --locked
+
+  bundle:
+    needs: test
+    strategy:
+      fail-fast: false
+      # tauri-action updates one shared latest.json per platform. Serialize tag
+      # releases to avoid concurrent delete/upload races; keep normal CI parallel.
+      max-parallel: ${{ startsWith(github.ref, 'refs/tags/v') && 1 || 3 }}
+      matrix:
+        include:
+          - platform: macos-latest
+            name: macos-universal
+            args: --target universal-apple-darwin
+          - platform: windows-latest
+            name: windows-x64
+            args: ""
+          - platform: ubuntu-22.04
+            name: linux-x64
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.name }}
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev libxdo-dev patchelf
+
+      - run: npm ci
+
+      - name: Enable signing where secrets exist
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TM_UPDATER_PUBKEY: ${{ vars.TM_UPDATER_PUBKEY }}
+        run: |
+          export_var() {
+            local delimiter="EOF_$RANDOM$RANDOM"
+            { echo "$1<<$delimiter"; echo "${!1}"; echo "$delimiter"; } >> "$GITHUB_ENV"
+          }
+          extra_args=""
+          if [[ "$RUNNER_OS" == "macOS" && -n "$APPLE_CERTIFICATE" ]]; then
+            for v in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+              export_var "$v"
+            done
+            echo "macOS signing and notarization: on"
+          else
+            echo "macOS signing: off"
+          fi
+          if [[ -n "$TAURI_SIGNING_PRIVATE_KEY" && -n "$TM_UPDATER_PUBKEY" ]]; then
+            for v in TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD TM_UPDATER_PUBKEY; do
+              export_var "$v"
+            done
+            extra_args="--config tauri.updater.conf.json"
+            echo "Updater: on"
+          else
+            echo "Updater: off"
+          fi
+          echo "TAURI_EXTRA_ARGS=$extra_args" >> "$GITHUB_ENV"
+
+      - name: Build (and release on tags)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ matrix.args }} ${{ env.TAURI_EXTRA_ARGS }}
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          releaseName: Tailrmade Companion ${{ github.ref_name }}
+          releaseBody: See the README for install notes.
+          releaseDraft: true
+          prerelease: false
+          includeUpdaterJson: ${{ env.TAURI_EXTRA_ARGS != '' }}
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: tm-companion-${{ matrix.name }}
+          if-no-files-found: error
+          path: |
+            target/**/release/bundle/dmg/*.dmg
+            target/**/release/bundle/macos/*.app.tar.gz*
+            target/**/release/bundle/msi/*.msi
+            target/**/release/bundle/nsis/*.exe
+            target/**/release/bundle/deb/*.deb
+            target/**/release/bundle/appimage/*.AppImage
+            target/**/release/bundle/rpm/*.rpm

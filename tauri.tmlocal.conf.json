@@ -1,0 +1,9 @@
+{
+  "productName": "Tailrmade Local",
+  "identifier": "app.tailrmade.local",
+  "bundle": {
+    "resources": {
+      "tm/": "tm/"
+    }
+  }
+}

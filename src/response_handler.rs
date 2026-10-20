@@ -1,42 +1,16 @@
 use axum::{response::IntoResponse, response::Response, Json};
 use base64::{engine::general_purpose, Engine as _};
-use dotenv::dotenv;
 use regex::Regex;
 use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::env;
-use std::fs;
-use std::path::Path;
 use xml2json_rs::JsonBuilder;
 
 fn get_env_var(key: &str) -> String {
-    // First try to get from .env file (loaded into env vars by dotenv)
-    match env::var(key) {
-        Ok(value) => value,
-        Err(e) => {
-            println!("Couldn't read environment variable {}: {}", key, e);
-            String::from("UNKNOWN_ENV_VARIABLE")
-        }
-    }
-}
-
-// Initialize environment at startup
-pub fn init_environment() {
-    // Create .env file if it doesn't exist
-    let env_path = Path::new(".env");
-    if !env_path.exists() {
-        match fs::File::create(env_path) {
-            Ok(_) => println!("Created .env file"),
-            Err(e) => println!("Failed to create .env file: {}", e),
-        }
-    }
-    
-    // Load .env file
-    match dotenv() {
-        Ok(_) => println!("Loaded .env file"),
-        Err(e) => println!("Error loading .env file: {}", e),
-    }
+    crate::secrets::get(key).unwrap_or_else(|| {
+        tracing::warn!(key, "Key referenced by $TM_KEY is not configured");
+        String::from("UNKNOWN_ENV_VARIABLE")
+    })
 }
 
 fn replace_variables(input: String) -> String {
@@ -58,7 +32,7 @@ fn replace_variables(input: String) -> String {
         let function_regex: Regex = Regex::new(&function_reg_string).unwrap();
 
         out_string = function_regex
-            .replace_all(&out_string.as_str(), |caps: &regex::Captures| {
+            .replace_all(out_string.as_str(), |caps: &regex::Captures| {
                 let key = &caps[1];
                 func(key)
             })
@@ -78,7 +52,7 @@ fn convert_to_json_string(text: String, headers: &HashMap<String, String>) -> St
 
     let json_builder = JsonBuilder::default();
     match json_builder.build_string_from_xml(text.as_str()) {
-        Ok(json) if json.len() > 0 && json != "null" => json,
+        Ok(json) if !json.is_empty() && json != "null" => json,
         _ => text,
     }
 }
@@ -99,8 +73,8 @@ pub async fn tm_request(Json(payload): Json<CompanionInput>) -> Response {
         for (key, value) in received.final_headers.clone() {
             to_send = to_send.header(key, replace_variables(value));
         }
-        return to_send;
-    }; 
+        to_send
+    };
 
     let response = match payload.final_method.as_str() {
         "Get" => {
@@ -116,20 +90,45 @@ pub async fn tm_request(Json(payload): Json<CompanionInput>) -> Response {
         _ => None,
     };
 
+    let host = reqwest::Url::parse(&payload.final_url)
+        .ok()
+        .and_then(|url| url.host_str().map(str::to_owned));
     let mut status_code = StatusCode::IM_A_TEAPOT;
     let return_string = match response {
         Some(res) => match res {
             Ok(res) => {
                 status_code = res.status();
+                tracing::debug!(
+                    method = payload.final_method,
+                    host,
+                    status = status_code.as_u16(),
+                    "Forwarded request"
+                );
                 let payload = res.text().await;
                 match payload {
                     Ok(text) => convert_to_json_string(text, &received.final_headers),
-                    Err(e) => String::from(e.to_string()),
+                    Err(e) => e.to_string(),
                 }
             }
-            Err(e) => String::from(e.to_string()),
+            Err(e) => {
+                // The caller sent this URL, so it may see it; the log may not.
+                let message = e.to_string();
+                tracing::warn!(
+                    method = payload.final_method,
+                    host,
+                    error = %e.without_url(),
+                    "Forwarded request failed"
+                );
+                message
+            }
         },
-        None => String::from("{\"Response\":\"Invalid method thinks companion\"}"),
+        None => {
+            tracing::warn!(
+                method = payload.final_method,
+                "Forward rejected: unsupported method"
+            );
+            String::from("{\"Response\":\"Invalid method thinks companion\"}")
+        }
     };
 
     let response = CompanionResponse {
